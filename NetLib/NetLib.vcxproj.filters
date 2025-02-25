@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Main">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="NetLib">
+      <UniqueIdentifier>{61bebb29-c672-4337-8bf8-e107be58dc31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{4d2ec7d5-380b-4ff2-95b5-f751809b201f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common\Message">
+      <UniqueIdentifier>{5b93d541-d869-4834-953a-ec3b50ad3439}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common\DataStructure">
+      <UniqueIdentifier>{984dcec7-7631-4da5-b482-4cb9c74ad380}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="CircularQueue.cpp">
+      <Filter>Common\DataStructure</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="NetLib.h">
+      <Filter>NetLib</Filter>
+    </ClInclude>
+    <ClInclude Include="Session.h">
+      <Filter>NetLib</Filter>
+    </ClInclude>
+    <ClInclude Include="CircularQueue.h">
+      <Filter>Common\DataStructure</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

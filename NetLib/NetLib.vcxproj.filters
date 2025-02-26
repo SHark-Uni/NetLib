@@ -17,6 +17,9 @@
     <Filter Include="Common\DataStructure">
       <UniqueIdentifier>{984dcec7-7631-4da5-b482-4cb9c74ad380}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Common\DataStructure\Test">
+      <UniqueIdentifier>{60831dc2-da0d-498b-9a6d-da23e10eab75}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -35,6 +38,9 @@
     </ClInclude>
     <ClInclude Include="CircularQueue.h">
       <Filter>Common\DataStructure</Filter>
+    </ClInclude>
+    <ClInclude Include="CircularQueueTest.h">
+      <Filter>Common\DataStructure\Test</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

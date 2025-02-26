@@ -5,16 +5,14 @@ namespace Common
 	class CircularQueue
 	{
 	public:
+		CircularQueue();
 		CircularQueue(int size);
 		~CircularQueue()
 		{
 			delete[] _Buffer;
 		}
 
-		/*====
-		* 사용중인 크기 / 사용할 수 있는 크기
-		======*/
-		inline int GetDequeueSize() const
+		inline int GetCurrentSize() const
 		{
 			if ((_Rear + 1) % (_Capacity + 1) == _Front)
 			{
@@ -31,7 +29,7 @@ namespace Common
 			}
 
 		}
-		inline int GetEnqueueSize() const
+		inline int GetRemainingSize() const
 		{
 			//비어 있다면
 			if (_Front == _Rear)
@@ -41,7 +39,7 @@ namespace Common
 			// 꽉찬 경우도 커버함.
 			if (_Front < _Rear)
 			{
-				return (_Front) + (_Capacity - _Rear );
+				return (_Front)+(_Capacity - _Rear);
 			}
 			else
 			{
@@ -49,18 +47,18 @@ namespace Common
 			}
 		}
 
-		/*
-			Enqueue시 불가능하다면 0
-		*/
 		int Enqueue(const char* message, int size);
 		int Dequeue(char* out, int size);
 		int Peek(char* out, int size);
 
+		void clear();
 	private:
 		int _Front;
 		int _Rear;
-
 		int _Capacity;
+		enum {
+			DEFAULT_SIZE = 64,
+		};
 		char* _Buffer;
 	};
 }

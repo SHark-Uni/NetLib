@@ -5,6 +5,14 @@ using namespace Common;
 
 #include <string.h>
 
+CircularQueue::CircularQueue()
+    :_Front(0)
+    , _Rear(0)
+    , _Capacity(DEFAULT_SIZE)
+{
+    _Buffer = new char[DEFAULT_SIZE + 1];
+}
+
 CircularQueue::CircularQueue(int size)
     :_Front(0)
     ,_Rear(0)
@@ -23,19 +31,17 @@ int CircularQueue::Enqueue(const char* message, int size)
     }
 
     //Front가 앞선다면
-    if (_Front < _Rear)
+    if (_Front <= _Rear)
     {
         // 최대한 복사해주고 반환
         int rSize = _Capacity - _Rear + 1;
         int fSize = _Front - 1;
-        
+
         if (rSize >= size)
         {
             memcpy(_Buffer + _Rear, message, size);
             _Rear += size;
             return size;
-
-           
         }
         //쪼개서 넣어야 하는 경우
         else
@@ -53,7 +59,9 @@ int CircularQueue::Enqueue(const char* message, int size)
     else
     {
         int cpySize = _Front - _Rear - 1;
-        if (cpySize < size)
+
+        //남이있는 사이즈가 충분한 경우
+        if (size < cpySize)
         {
             cpySize = size;
         }
@@ -104,6 +112,7 @@ int CircularQueue::Dequeue(char* out, int size)
     }
     memcpy(out, _Buffer + _Front, fSize);
     memcpy(out + fSize, _Buffer, cpySize);
+
     _Front = (_Front + fSize + cpySize) % (_Capacity + 1);
     return fSize + cpySize;
 }
@@ -145,4 +154,9 @@ int CircularQueue::Peek(char* out, int size)
     memcpy(out, _Buffer + _Front, fSize);
     memcpy(out + fSize, _Buffer, cpySize);
     return fSize + cpySize;
+}
+
+void CircularQueue::clear()
+{
+    _Rear = _Front = 0;
 }

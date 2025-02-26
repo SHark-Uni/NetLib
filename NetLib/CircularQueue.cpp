@@ -10,7 +10,7 @@ CircularQueue::CircularQueue()
     , _Rear(0)
     , _Capacity(DEFAULT_SIZE)
 {
-    _Buffer = new char[DEFAULT_SIZE + 1];
+    _pBuffer = new char[DEFAULT_SIZE + 1];
 }
 
 CircularQueue::CircularQueue(int size)
@@ -18,11 +18,11 @@ CircularQueue::CircularQueue(int size)
     ,_Rear(0)
     ,_Capacity(size)
 {
-    _Buffer = new char[size + 1];
+    _pBuffer = new char[size + 1];
 }
 
 //최대한 넣어주고 return.
-int CircularQueue::Enqueue(const char* message, int size)
+int CircularQueue::Enqueue(const char* pMessage, int size)
 {
     //꽉찼다면 return 0
     if ((_Rear + 1) % (_Capacity + 1) == _Front)
@@ -39,7 +39,7 @@ int CircularQueue::Enqueue(const char* message, int size)
 
         if (rSize >= size)
         {
-            memcpy(_Buffer + _Rear, message, size);
+            memcpy(_pBuffer + _Rear, pMessage, size);
             _Rear += size;
             return size;
         }
@@ -50,8 +50,8 @@ int CircularQueue::Enqueue(const char* message, int size)
             {
                 fSize = size - rSize;
             }
-            memcpy(_Buffer + _Rear, message, rSize);
-            memcpy(_Buffer, message + rSize, fSize);
+            memcpy(_pBuffer + _Rear, pMessage, rSize);
+            memcpy(_pBuffer, pMessage + rSize, fSize);
             _Rear = (_Rear + (fSize + rSize)) % (_Capacity + 1);
             return fSize + rSize;
         }
@@ -65,7 +65,7 @@ int CircularQueue::Enqueue(const char* message, int size)
         {
             cpySize = size;
         }
-        memcpy(_Buffer + _Rear, message, cpySize);
+        memcpy(_pBuffer + _Rear, pMessage, cpySize);
         _Rear += cpySize;
         return cpySize;
     }
@@ -90,7 +90,7 @@ int CircularQueue::Dequeue(char* out, int size)
         {
             cpySize = size;
         }
-        memcpy(out, _Buffer + _Front, cpySize);
+        memcpy(out, _pBuffer + _Front, cpySize);
         _Front += cpySize;
         return cpySize;
     }
@@ -100,7 +100,7 @@ int CircularQueue::Dequeue(char* out, int size)
 
     if (size < fSize)
     {
-        memcpy(out, _Buffer + _Front, size);
+        memcpy(out, _pBuffer + _Front, size);
         _Front = (_Front + size) % (_Capacity + 1);
         return size;
     }
@@ -110,8 +110,8 @@ int CircularQueue::Dequeue(char* out, int size)
     {
         cpySize = size - fSize;
     }
-    memcpy(out, _Buffer + _Front, fSize);
-    memcpy(out + fSize, _Buffer, cpySize);
+    memcpy(out, _pBuffer + _Front, fSize);
+    memcpy(out + fSize, _pBuffer, cpySize);
 
     _Front = (_Front + fSize + cpySize) % (_Capacity + 1);
     return fSize + cpySize;
@@ -133,7 +133,7 @@ int CircularQueue::Peek(char* out, int size)
         {
             cpySize = size;
         }
-        memcpy(out, _Buffer + _Front, cpySize);
+        memcpy(out, _pBuffer + _Front, cpySize);
         return cpySize;
     }
 
@@ -142,7 +142,7 @@ int CircularQueue::Peek(char* out, int size)
 
     if (size < fSize)
     {
-        memcpy(out, _Buffer + _Front, size);
+        memcpy(out, _pBuffer + _Front, size);
         return size;
     }
     //쪼개야하는 경우 
@@ -151,8 +151,8 @@ int CircularQueue::Peek(char* out, int size)
     {
         cpySize = size - fSize;
     }
-    memcpy(out, _Buffer + _Front, fSize);
-    memcpy(out + fSize, _Buffer, cpySize);
+    memcpy(out, _pBuffer + _Front, fSize);
+    memcpy(out + fSize, _pBuffer, cpySize);
     return fSize + cpySize;
 }
 

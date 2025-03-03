@@ -129,10 +129,12 @@
   <ItemGroup>
     <ClCompile Include="CircularQueue.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MemoryPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CircularQueue.h" />
     <ClInclude Include="CircularQueueTest.h" />
+    <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="NetLib.h" />
     <ClInclude Include="Session.h" />
   </ItemGroup>

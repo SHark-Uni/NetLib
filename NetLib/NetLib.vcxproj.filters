@@ -28,6 +28,9 @@
     <ClCompile Include="CircularQueue.cpp">
       <Filter>Common\DataStructure</Filter>
     </ClCompile>
+    <ClCompile Include="MemoryPool.cpp">
+      <Filter>Common\DataStructure</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NetLib.h">
@@ -41,6 +44,9 @@
     </ClInclude>
     <ClInclude Include="CircularQueueTest.h">
       <Filter>Common\DataStructure\Test</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryPool.h">
+      <Filter>Common\DataStructure</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,13 +1,15 @@
 #pragma once
-#include <utility> 
+#include <utility>
 
+#ifdef MEMORY_POOL_DEBUG
+#include <windows.h>
+#endif
 
 /* 메모리 풀 구조
 	* -------------------------------------------------------------------------
 	|	prevBlock	|  padding(optional) |    currentSlot	  | .... | LastSlot|
 	----------------------------------------------------------------------------
 */
-
 namespace Common
 {
 	template<typename T, size_t BucketSize = 4096>
@@ -15,6 +17,15 @@ namespace Common
 	{
 	public:
 		typedef char _BYTE;
+
+		union Slot
+		{
+			T _Element;
+			Slot* _pNext;
+#ifdef MEMORY_POOL_DEBUG
+			int GUARD;
+#endif
+		};
 
 		MemoryPool()
 			:_CurrentBucket(nullptr)
@@ -30,8 +41,8 @@ namespace Common
 		MemoryPool& operator=(const MemoryPool& rhs) = delete;
 
 		/*=========
-	        메모리풀의 이동은 허용하긴 하는데.. 막상 진짜 진짜 필요하냐고 물으면 .. 글쎄 일단 해놓고 나중에 풀어보자.
-        ========*/
+			메모리풀의 이동은 허용하긴 하는데.. 막상 진짜 진짜 필요하냐고 물으면 .. 흠
+		========*/
 		MemoryPool(MemoryPool&& other)
 			:_CurrentBucket(other._CurrentBucket)
 			, _CurSlot(other._CurSlot)
@@ -60,17 +71,40 @@ namespace Common
 			rhs._LastSlot = nullptr;
 			rhs._FreeList = nullptr;
 		}
+#ifndef MEMORY_POOL_DEBUG
 		~MemoryPool()
 		{
 			Slot* cur = _CurrentBucket;
-			while (_CurrentBucket != nullptr)
+			while (cur != nullptr)
 			{
-				Slot* prev = _CurrentBucket->_pNext;
+				Slot* prev = cur->_pNext;
 				operator delete(reinterpret_cast<void*>(cur));
 				cur = prev;
 			}
 		}
+#else
+		~MemoryPool()
+		{
+			Slot* cur = _CurrentBucket;
 
+			if (cur->GUARD != UNDERFLOW_GUARD)
+			{
+				DebugBreak();
+			}
+			int* overflowGuard = reinterpret_cast<int*>((_BYTE*)cur + sizeof(int) + BucketSize);
+			if (*overflowGuard != OVERFLOW_GUARD)
+			{
+				DebugBreak();
+			}
+
+			while (cur != nullptr)
+			{
+				Slot* prev = reinterpret_cast<Slot*>(((_BYTE*)cur + sizeof(int)))->_pNext;
+				operator delete(reinterpret_cast<void*>(cur));
+				cur = prev;
+			}
+		}
+#endif
 		T* allocate()
 		{
 			if (_FreeList != nullptr)
@@ -83,10 +117,15 @@ namespace Common
 			//slot을 모두 소모했다면
 			if (_CurSlot >= _LastSlot)
 			{
+#ifndef MEMORY_POOL_DEBUG
 				allocateBucket();
+#else
+				allocateBucket_FOR_DEBUG();
+#endif
 			}
-			return reinterpret_cast<Slot*>(_CurSlot++);
+			return reinterpret_cast<T*>(_CurSlot++);
 		}
+
 		void deAllocate(T* pMemory)
 		{
 			if (pMemory != nullptr)
@@ -103,11 +142,13 @@ namespace Common
 			new (element) T(std::forward<Args>(args)...);
 			return element;
 		}
-		void deAllocate_destructor(T* pMemory)
+
+		void deAllocate_Destructor(T* pMemory)
 		{
 			pMemory->~T();
 			deAllocate(pMemory);
 		}
+
 
 		inline size_t getRemainSlot() const
 		{
@@ -117,13 +158,19 @@ namespace Common
 			}
 			return (_LastSlot - _CurSlot) / sizeof(Slot);
 		}
-	private:
-		union Slot
-		{
-			T _Element;
-			Slot* _pNext;
-		};
+		Slot* _CurrentBucket;
+		Slot* _CurSlot;
+		Slot* _LastSlot;
+		Slot* _FreeList;
 
+#ifdef MEMORY_POOL_DEBUG
+		enum MEMPORY_GUARD
+		{
+			UNDERFLOW_GUARD = 0xFFFFAAAA,
+			OVERFLOW_GUARD = 0xFFFFAAAA,
+		};
+#endif
+	private:
 		void allocateBucket()
 		{
 			_BYTE* pBucket = reinterpret_cast<_BYTE*>(operator new(BucketSize));
@@ -140,9 +187,29 @@ namespace Common
 			_CurSlot = reinterpret_cast<Slot*>(pBucketstart + padding);
 			_LastSlot = reinterpret_cast<Slot*>(pBucket + BucketSize - sizeof(Slot) + 1);
 		}
-		Slot* _CurrentBucket;
-		Slot* _CurSlot;
-		Slot* _LastSlot;
-		Slot* _FreeList;
+#ifdef MEMORY_POOL_DEBUG
+		void allocateBucket_FOR_DEBUG()
+		{
+			_BYTE* pBucket = reinterpret_cast<_BYTE*>(operator new(BucketSize + (sizeof(int) * 2)));
+			*(reinterpret_cast<int*>(pBucket)) = UNDERFLOW_GUARD;
+
+
+			_BYTE* pBlockStart = pBucket + sizeof(int);
+			*(reinterpret_cast<int*>((pBlockStart + BucketSize))) = OVERFLOW_GUARD;
+
+			reinterpret_cast<Slot*>(pBlockStart)->_pNext = _CurrentBucket;
+			_CurrentBucket = reinterpret_cast<Slot*>(pBucket);
+
+			_BYTE* pBucketstart = pBlockStart + sizeof(Slot*);
+
+			//Need for Align Slot Start Address.
+			//ex) align 16byte T is exist, padding will be 8! 
+			size_t padding = (alignof(T) - reinterpret_cast<uintptr_t>(pBlockStart)) % alignof(T);
+
+			_CurSlot = reinterpret_cast<Slot*>(pBucketstart + padding);
+			_LastSlot = reinterpret_cast<Slot*>(pBlockStart + BucketSize - sizeof(Slot) + 1);
+		}
+#endif
 	};
+
 }

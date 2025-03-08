@@ -106,6 +106,7 @@ void NetWorkLib::Process()
 	auto SessionEnd_iter = _Sessions.end();
 	while (true)
 	{
+		/* TODO : 64번씩 돌아야함.MAX_LOOP_CNT로 64번씩 통제해주는 코드 추가해야함. */ 
 		for (; iter != SessionEnd_iter; ++iter)
 		{
 			Session* curSession = iter->second;

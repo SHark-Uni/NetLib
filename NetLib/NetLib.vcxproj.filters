@@ -28,6 +28,9 @@
     <ClCompile Include="CircularQueue.cpp">
       <Filter>Common\DataStructure</Filter>
     </ClCompile>
+    <ClCompile Include="NetLib.cpp">
+      <Filter>NetLib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NetLib.h">

@@ -6,7 +6,6 @@
 #include <WS2tcpip.h>
 #include <unordered_map>
 
-
 namespace NetLib
 {
 	class Session;
@@ -16,7 +15,7 @@ namespace NetLib
 		NetWorkLib() = default;
 		virtual ~NetWorkLib();
 
-		bool Init_For_TCP();
+		bool InitForTCP();
 		/*=======
 			TODO : RUDP
 		===========*/
@@ -34,9 +33,10 @@ namespace NetLib
 
 		virtual void OnAcceptProc() = 0; 
 		virtual void OnRecvProc() = 0;
-		virtual void OnDestroyProc() = 0;
-		/* TODO : 캐릭터가 삭제되는 경우는 더 생각 해보자. */
 
+		/* TODO : 캐릭터가 삭제되는 경우는 더 생각 해보자. */
+		virtual void OnDestroyProc() = 0;
+	
 	private:
 		SOCKET _ListenSocket;
 

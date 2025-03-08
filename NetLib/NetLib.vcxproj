@@ -129,6 +129,7 @@
   <ItemGroup>
     <ClCompile Include="CircularQueue.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NetLib.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CircularQueue.h" />

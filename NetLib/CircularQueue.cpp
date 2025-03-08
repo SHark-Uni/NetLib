@@ -2,7 +2,6 @@
 #include <assert.h>
 
 using namespace Common;
-
 #include <string.h>
 
 CircularQueue::CircularQueue()

@@ -103,12 +103,11 @@ namespace Common
 			new (element) T(std::forward<Args>(args)...);
 			return element;
 		}
-		void deAllocate_Destructor(T* pMemory)
+		void deAllocate_destructor(T* pMemory)
 		{
 			pMemory->~T();
 			deAllocate(pMemory);
 		}
-
 
 		inline size_t getRemainSlot() const
 		{
@@ -146,6 +145,4 @@ namespace Common
 		Slot* _LastSlot;
 		Slot* _FreeList;
 	};
-
-
 }

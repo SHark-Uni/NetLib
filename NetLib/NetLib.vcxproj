@@ -128,14 +128,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CircularQueue.cpp" />
+    <ClCompile Include="Logger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NetLib.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CircularQueue.h" />
     <ClInclude Include="CircularQueueTest.h" />
+    <ClInclude Include="ErrorMessage.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="NetLib.h" />
+    <ClInclude Include="Config.h" />
     <ClInclude Include="Session.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

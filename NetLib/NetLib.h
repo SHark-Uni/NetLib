@@ -6,6 +6,9 @@
 #include <WS2tcpip.h>
 #include <unordered_map>
 
+#include "ErrorMessage.h"
+#include "Config.h"
+
 namespace NetLib
 {
 	class Session;
@@ -15,7 +18,7 @@ namespace NetLib
 		NetWorkLib() = default;
 		virtual ~NetWorkLib();
 
-		bool InitForTCP();
+		Common::eERROR_MESSEAGE InitForTCP();
 		/*=======
 			TODO : RUDP
 		===========*/
@@ -39,11 +42,12 @@ namespace NetLib
 	
 	private:
 		SOCKET _ListenSocket;
-
+		Common::CONFIG_t _ServerConfig;
 		void RecvProc();
 		void AcceptProc();
 		void SendProc();
 
+		bool ReadConfig();
 		//¼¼¼Çµé 
 		std::unordered_map<int, Session*> _Sessions;
 	};

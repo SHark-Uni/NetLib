@@ -34,7 +34,7 @@ namespace NetLib
 		/*========
 		* TODO : 송/수신 버퍼 -> 환형 큐로 변경
 		============*/
-		char* _SendBuffer[512];
-		char* _RendBuffer[512];
+		char* _pSendQueue;
+		char* _pRecvQueue;
 	};
 }

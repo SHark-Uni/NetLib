@@ -1,5 +1,6 @@
 #include "NetLib.h"
 #include "Logger.h"
+#include "Session.h"
 
 using namespace Common;
 using namespace NetLib;
@@ -87,6 +88,67 @@ eERROR_MESSEAGE NetWorkLib::InitForTCP()
 
 void NetWorkLib::Process()
 {
+	int Flag;
+	FD_SET readSet;
+	FD_SET writeSet;
+	TIMEVAL option = { 0,0 };
+
+	int MAX_LOOP_CNT = 64;
+
+	FD_ZERO(&readSet);
+	FD_ZERO(&writeSet);
+	FD_SET(_ListenSocket, &readSet);
+	//64명 이상..으으으음
+	//이 프레임에 있던 세션들
+
+	auto SesionStart_iter = _Sessions.begin();
+	auto iter = _Sessions.begin();
+	auto SessionEnd_iter = _Sessions.end();
+	while (true)
+	{
+		for (; iter != SessionEnd_iter; ++iter)
+		{
+			Session* curSession = iter->second;
+			FD_SET(curSession->GetSocket(), &readSet);
+
+			if (curSession->CanSendData())
+			{
+				FD_SET(curSession->GetSocket(), &writeSet);
+			}
+		}
+
+		::select(0, &readSet, nullptr, nullptr, &option);
+		if (FD_ISSET(_ListenSocket, &readSet))
+		{
+			//Accpet로직
+		}
+		//나머지 세션들 FD_ISSET검사
+		for (; SesionStart_iter != iter; ++SesionStart_iter)
+		{
+			Session* curSession = SesionStart_iter->second;
+			if (FD_ISSET(curSession->GetSocket(), &readSet))
+			{
+				//Recv 
+			}
+
+			if (FD_ISSET(curSession->GetSocket(), &writeSet))
+			{
+				//send 
+			}
+		}
+
+		if (SesionStart_iter != SessionEnd_iter)
+		{
+			FD_ZERO(&readSet);
+			FD_ZERO(&writeSet);
+		}
+
+	}
+
+
+	
+
+	//마지막에 Send
 
 }
 

@@ -5,6 +5,7 @@ namespace Common
 	class CircularQueue
 	{
 	public:
+		friend class Session;
 		CircularQueue();
 		CircularQueue(int size);
 		~CircularQueue()

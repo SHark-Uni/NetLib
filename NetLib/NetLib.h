@@ -17,15 +17,14 @@ namespace NetLib
 	public:
 		NetWorkLib() = default;
 		virtual ~NetWorkLib();
-
+	protected:
 		Common::eERROR_MESSEAGE InitForTCP();
 		/*=======
 			TODO : RUDP
 		===========*/
-		//bool Init_For_UDP();
+		//bool InitForUDP();
 
 		void Process();
-
 		void SendUniCast(int sessionKey, char* message);
 		void SendBroadCast(char* message);
 		void SendBroadCast(int exceptSession, char* message);

@@ -37,6 +37,9 @@
     <ClCompile Include="Logger.cpp">
       <Filter>LOG</Filter>
     </ClCompile>
+    <ClCompile Include="Session.cpp">
+      <Filter>NetLib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NetLib.h">

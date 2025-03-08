@@ -24,6 +24,12 @@ namespace NetLib
 		{
 			return _Port;
 		}
+
+		inline bool CanSendData()
+		{
+			return (_pSendQueue->GetCurrentSize() > 0);
+		}
+
 		void GetIP(WCHAR* out);
 		
 	private:
@@ -34,7 +40,7 @@ namespace NetLib
 		/*========
 		* TODO : 송/수신 버퍼 -> 환형 큐로 변경
 		============*/
-		char* _pSendQueue;
-		char* _pRecvQueue;
+		CircularQueue* _pSendQueue;
+		CircularQueue* _pRecvQueue;
 	};
 }

@@ -9,6 +9,8 @@
 	* -------------------------------------------------------------------------
 	|	prevBlock	|  padding(optional) |    currentSlot	  | .... | LastSlot|
 	----------------------------------------------------------------------------
+	
+	Slot은 Align이 되도록 시작합니다.(8 혹은 16의 경계)
 */
 namespace Common
 {
@@ -36,13 +38,9 @@ namespace Common
 
 		}
 
-		/*복사할 일은 진짜 없을거 같은데.. 같은 Block들을 다른 곳에서 가리키는 상황은 없어야함.*/
 		MemoryPool(const MemoryPool& other) = delete;
 		MemoryPool& operator=(const MemoryPool& rhs) = delete;
 
-		/*=========
-			메모리풀의 이동은 허용하긴 하는데.. 막상 진짜 진짜 필요하냐고 물으면 .. 흠
-		========*/
 		MemoryPool(MemoryPool&& other)
 			:_CurrentBucket(other._CurrentBucket)
 			, _CurSlot(other._CurSlot)
@@ -149,7 +147,6 @@ namespace Common
 			deAllocate(pMemory);
 		}
 
-
 		inline size_t getRemainSlot() const
 		{
 			if (_CurSlot >= _LastSlot)
@@ -180,8 +177,8 @@ namespace Common
 
 			_BYTE* pBucketstart = pBucket + sizeof(Slot*);
 
-			//Need for Align Slot Start Address.
-			//ex) align 16byte T is exist, padding will be 8! 
+			//Slot is need to aligned.
+			//ex) align 16byte T is exist, padding will be 8.
 			size_t padding = (alignof(T) - reinterpret_cast<uintptr_t>(pBucket)) % alignof(T);
 
 			_CurSlot = reinterpret_cast<Slot*>(pBucketstart + padding);

@@ -2,7 +2,7 @@
 
 namespace Common
 {
-	enum class eERROR_MESSEAGE
+	enum class eERROR_MESSAGE
 	{
 		
 		WSA_START_FAIL,
@@ -12,6 +12,8 @@ namespace Common
 		SET_SERVER_CONFIG_FAIL,
 		BIND_SERVER_FAIL,
 		SET_LISTEN_FAIL,
+		SELECT_FAIL,
+
 
 		ERROR_MESSAGE_CNT,
 		SUCCESS,

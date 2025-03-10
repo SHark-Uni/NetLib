@@ -18,7 +18,7 @@ namespace NetLib
 		NetWorkLib() = default;
 		virtual ~NetWorkLib();
 	protected:
-		Common::eERROR_MESSEAGE InitForTCP();
+		Common::eERROR_MESSAGE InitForTCP();
 		/*=======
 			TODO : RUDP
 		===========*/
@@ -42,9 +42,9 @@ namespace NetLib
 	private:
 		SOCKET _ListenSocket;
 		Common::CONFIG_t _ServerConfig;
-		void RecvProc();
-		void AcceptProc();
-		void SendProc();
+		void _RecvProc();
+		void _AcceptProc();
+		void _SendProc();
 
 		bool ReadConfig();
 		//¼¼¼Çµé 

@@ -4,10 +4,10 @@
 #include <windows.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
-#include "CircularQueue.h"
 
 namespace NetLib
 {
+	class CircularQueue;
 	class Session
 	{
 	public:
@@ -25,11 +25,7 @@ namespace NetLib
 			return _Port;
 		}
 
-		inline bool CanSendData()
-		{
-			return (_pSendQueue->GetCurrentSize() > 0);
-		}
-
+		bool CanSendData();
 		void GetIP(WCHAR* out);
 		
 	private:

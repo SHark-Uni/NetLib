@@ -34,6 +34,10 @@ namespace NetLib
 		{
 			_Alive = false;
 		}
+		inline bool GetConnection() const
+		{
+			return _Alive;
+		}
 		static int GenerateSessionKey()
 		{
 			static int key = 0;

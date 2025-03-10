@@ -249,32 +249,97 @@ void NetWorkLib::_SendProc(Session* session)
 	// L7버퍼에서 L4로 원하는 만큼 복사 x 
 	if (sendLen < sendQLen)
 	{
-		
 		session->SetDisconnect();
 		return;
 	}
 	pSendQueue->MoveFront(sendLen);
 }
 
-void NetWorkLib::SendUniCast(const int sessionKey, char* message)
+void NetWorkLib::SendUniCast(const int sessionKey, char* message, const size_t messageLen)
 {
-
+	int enqueueLen;
+	const auto& iter = _Sessions.find(sessionKey);
+	if (iter != _Sessions.end())
+	{
+		Session* findSession = iter->second;
+		if (findSession->GetConnection() == false)
+		{
+			return;
+		}
+		
+		CircularQueue* const curSendQ = findSession->_pSendQueue;
+		enqueueLen = curSendQ->Enqueue(message, messageLen);
+		// 요청한 만큼 복사를 못함. L7버퍼가 꽉 차는 경우. 
+		// 이때, 끊어주기로함 우리는. 왜? => 꼭 기억해야함. 
+		if (enqueueLen < static_cast<int>(messageLen))
+		{
+			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
+			findSession->SetDisconnect();
+			return;
+		}
+	}
+	return;
 }
 
-void NetWorkLib::SendBroadCast(char* message)
+void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
 {
+	int enqueueLen;
+	for (const auto& session : _Sessions)
+	{
+		Session* cur = session.second;
+		if (cur->GetConnection() == false)
+		{
+			continue;
+		}
 
+		CircularQueue* const curSendQ = cur->_pSendQueue;
+		enqueueLen = curSendQ->Enqueue(message, messageLen);
+		if (enqueueLen < static_cast<int>(messageLen))
+		{
+			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
+			cur->SetDisconnect();
+			continue;
+		}
+	}
 }
 
-void NetWorkLib::SendBroadCast(int exceptSession, char* message)
+void NetWorkLib::SendBroadCast(int exceptSession, char* message, const size_t messageLen)
 {
+	int enqueueLen;
+	for (const auto& session : _Sessions)
+	{
+		int curkey = session.first;
+		Session* cur = session.second;
 
+		if (cur->GetConnection() == false)
+		{
+			continue;
+		}
+		if (curkey == exceptSession)
+		{
+			continue;
+		}
+
+		CircularQueue* const curSendQ = cur->_pSendQueue;
+		enqueueLen = curSendQ->Enqueue(message, messageLen);
+		if (enqueueLen < static_cast<int>(messageLen))
+		{
+			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
+			cur->SetDisconnect();
+			continue;
+		}
+	}
 }
 
 void NetWorkLib::Disconnect(int sessionKey)
 {
 	//서버로 부터 이상한 세션키가 온다면? 세션 키도 관리대상인가?
-	//Session* cur = _Sessions[sessionKey];
+	const auto& iter = _Sessions.find(sessionKey);
+	if (iter != _Sessions.end())
+	{
+		iter->second->SetDisconnect();
+		return;
+	}
 	return;
 }
 

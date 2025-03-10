@@ -26,9 +26,9 @@ namespace NetLib
 		//bool InitForUDP();
 
 		void Process();
-		void SendUniCast(const int sessionKey, char* message);
-		void SendBroadCast(char* message);
-		void SendBroadCast(int exceptSession, char* message);
+		void SendUniCast(const int sessionKey, char* message, const size_t messageLen);
+		void SendBroadCast(char* message, const size_t messageLen);
+		void SendBroadCast(int exceptSession, char* message, const size_t messageLen);
 
 		/*========
 		* 상속받아서 게임 서버에서 컨텐츠 구현 

@@ -5,38 +5,54 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
+#include "CircularQueue.h"
+
+
+using namespace Common;
 namespace NetLib
 {
-	class CircularQueue;
+
+	class NetWorkLib;
 	class Session
 	{
 	public:
-		Session();
+		Session() = default;
 		virtual ~Session();
 
-		void CreateSession(SOCKET connectSocket, SOCKADDR_IN pConnectInfo);
+		void CreateSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo);
 
 		inline SOCKET GetSocket() const
 		{
 			return _Socket;
 		}
-		inline USHORT GetPort() const
-		{
-			return _Port;
-		}
-
-		bool CanSendData();
-		void GetIP(WCHAR* out);
 		
+		inline bool CanSendData() const
+		{
+			return (_pSendQueue->GetCurrentSize() > 0);
+		}
+		inline void	SetDisconnect()
+		{
+			_Alive = false;
+		}
+		static int GenerateSessionKey()
+		{
+			static int key = 0;
+			return key++;
+		}
+		void GetIP(WCHAR* out, size_t buffersize);
+		USHORT GetPort();
 	private:
+		friend class NetWorkLib;
+		enum
+		{
+			RING_BUFFER_POOL_SIZE = 8192,
+			SEND_BUFFER_SIZE = 4096,
+			RECV_BUFFER_SIZE = 1024,
+		};
 		SOCKET _Socket;
-		WCHAR _IP[32];
-		USHORT _Port;
-
-		/*========
-		* TODO : 송/수신 버퍼 -> 환형 큐로 변경
-		============*/
 		CircularQueue* _pSendQueue;
 		CircularQueue* _pRecvQueue;
+		bool _Alive;
+		SOCKADDR_IN _AddrInfo;
 	};
 }

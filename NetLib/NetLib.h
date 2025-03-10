@@ -8,6 +8,7 @@
 
 #include "ErrorMessage.h"
 #include "Config.h"
+#include "MemoryPool.h"
 
 namespace NetLib
 {
@@ -18,14 +19,14 @@ namespace NetLib
 		NetWorkLib() = default;
 		virtual ~NetWorkLib();
 	protected:
-		Common::eERROR_MESSAGE InitForTCP();
+		Common::eERROR_MESSAGE Init();
 		/*=======
 			TODO : RUDP
 		===========*/
 		//bool InitForUDP();
 
 		void Process();
-		void SendUniCast(int sessionKey, char* message);
+		void SendUniCast(const int sessionKey, char* message);
 		void SendBroadCast(char* message);
 		void SendBroadCast(int exceptSession, char* message);
 
@@ -33,21 +34,25 @@ namespace NetLib
 		* 상속받아서 게임 서버에서 컨텐츠 구현 
 		===========*/
 
-		virtual void OnAcceptProc() = 0; 
-		virtual void OnRecvProc() = 0;
+		virtual void OnAcceptProc(const int key) = 0; 
+		virtual void OnRecvProc(char* message) = 0;
 
 		/* TODO : 캐릭터가 삭제되는 경우는 더 생각 해보자. */
 		virtual void OnDestroyProc() = 0;
-	
+		void Disconnect(int sessionKey);
+		
 	private:
-		SOCKET _ListenSocket;
-		Common::CONFIG_t _ServerConfig;
-		void _RecvProc();
-		void _AcceptProc();
-		void _SendProc();
-
-		bool ReadConfig();
 		//세션들 
 		std::unordered_map<int, Session*> _Sessions;
+		SOCKET _ListenSocket;
+		enum
+		{
+			SESSION_POOL_SIZE = 8192,
+		};
+		void _AcceptProc();
+		void _RecvProc(Session* session);
+		void _SendProc(Session* session);
+		bool ReadConfig();
+		Common::CONFIG_t _ServerConfig;
 	};
 }

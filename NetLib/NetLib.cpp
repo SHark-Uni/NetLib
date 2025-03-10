@@ -2,8 +2,12 @@
 #include "Logger.h"
 #include "Session.h"
 
+
 using namespace Common;
 using namespace NetLib;
+
+template<typename T, size_t BucketSize>
+MemoryPool<T, BucketSize> MemoryPool<T, BucketSize>::_singleton;
 
 NetWorkLib::~NetWorkLib()
 {
@@ -11,7 +15,7 @@ NetWorkLib::~NetWorkLib()
 	::WSACleanup();
 }
 
-eERROR_MESSAGE NetWorkLib::InitForTCP()
+eERROR_MESSAGE NetWorkLib::Init()
 {
 	WSADATA wsaData;
 
@@ -83,6 +87,7 @@ eERROR_MESSAGE NetWorkLib::InitForTCP()
 		return eERROR_MESSAGE::SET_LISTEN_FAIL;
 	}
 
+	_Sessions.reserve(4096);
 	return eERROR_MESSAGE::SUCCESS;
 }
 
@@ -135,13 +140,13 @@ void NetWorkLib::Process()
 			Session* curSession = SesionStart_iter->second;
 			if (FD_ISSET(curSession->GetSocket(), &readSet))
 			{
-				_RecvProc();
+				_RecvProc(curSession);
 			}
 
 			if (FD_ISSET(curSession->GetSocket(), &writeSet))
 			{
 				//SendQueue에 복사된거 보내기.
-				_SendProc();
+				_SendProc(curSession);
 			}
 		}
 
@@ -154,7 +159,104 @@ void NetWorkLib::Process()
 
 }
 
-void NetWorkLib::SendUniCast(int sessionKey, char* message)
+void NetWorkLib::_RecvProc(Session* session)
+{
+	//해당 세션의 RingBuffer 수신버퍼의 주소를 그냥 박음.(Rear의 주소를 줘야겠지)
+	int recvLen;
+	int errorCode;
+
+	//Reading 용도로만 RecvQ 쓰기
+	CircularQueue* const pRecvQ = session->_pRecvQueue;
+
+	recvLen = ::recv(session->GetSocket(), pRecvQ->GetRearPtr(), pRecvQ->GetDirect_EnqueueSize(), 0);
+	if (recvLen <= 0)
+	{
+		errorCode = ::WSAGetLastError();
+		if (errorCode == WSAEWOULDBLOCK
+			|| errorCode == WSAECONNABORTED
+			|| errorCode == WSAECONNRESET)
+		{
+			return;
+		}
+
+		//다른 에러가 기록되는 경우
+		Logger::Logging(errorCode, __LINE__, L"Recv Error");
+		session->SetDisconnect();
+		return;
+	}
+	pRecvQ->MoveRear(recvLen);	
+	//OnRecvProc() 호출
+	//Header체크
+	//Header Peek
+	//완성되었다면, header의 길이확인
+	//header의 길이 확인 후, payload완성여부 확인
+
+	//payload완성되었다면 Dequeue
+}
+
+void NetWorkLib::_AcceptProc()
+{
+	int errorCode;
+	SOCKET connectSocket;
+	SOCKADDR_IN connectInfo;
+	ZeroMemory(&connectInfo, sizeof(connectInfo));
+	int conncetLen = sizeof(connectInfo);
+
+	connectSocket = ::accept(_ListenSocket, reinterpret_cast<SOCKADDR*>(&connectInfo), &conncetLen);
+	if (connectSocket == INVALID_SOCKET)
+	{
+		errorCode = ::WSAGetLastError();
+		if (errorCode != WSAEWOULDBLOCK)
+		{
+			return;
+		}
+		Logger::Logging(errorCode, __LINE__, L"ACCPET Error");
+		return;
+	}
+
+	//성공적으로 Accpet
+	
+	//세션 생성
+	Session* newSession = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance().allocate();
+	newSession->CreateSession(connectSocket, connectInfo);
+	int key = newSession->GenerateSessionKey();
+	_Sessions.insert({ key, newSession });
+
+	OnAcceptProc(key);
+	//onAcceptProc에서 할일 
+	//1. 플레이어 생성 (Contents코드에서
+	//2. 다른 플레이어에게 내 플레이어 생성 메시지 보내기
+	//3. 기존 플레이어들 나에게 생성 메시지 보내기
+
+}
+
+void NetWorkLib::_SendProc(Session* session)
+{
+	int sendLen;
+	int errorCode;
+	CircularQueue* const pSendQueue = session->_pSendQueue;
+	int sendQLen = pSendQueue->GetDirect_DequeueSize();
+	
+	sendLen = ::send(session->GetSocket(), pSendQueue->GetFrontPtr(), sendQLen, 0);
+	if (sendLen == SOCKET_ERROR)
+	{
+		//send시 WOULDBLOCK는 L4의 송신버퍼가 꽉찼다는거다. 이건 상대방의 수신이 다 찼다는거임. 
+		//나머지 에러들은 연결이 끊겼거나.. 등에는 그냥 끊어주면 됨.
+		// 안끊어줘야할 사유가 있나?
+		session->SetDisconnect();
+		return;
+	}
+	// L7버퍼에서 L4로 원하는 만큼 복사 x 
+	if (sendLen < sendQLen)
+	{
+		
+		session->SetDisconnect();
+		return;
+	}
+	pSendQueue->MoveFront(sendLen);
+}
+
+void NetWorkLib::SendUniCast(const int sessionKey, char* message)
 {
 
 }
@@ -169,19 +271,11 @@ void NetWorkLib::SendBroadCast(int exceptSession, char* message)
 
 }
 
-void NetWorkLib::RecvProc()
+void NetWorkLib::Disconnect(int sessionKey)
 {
-
-}
-
-void NetWorkLib::AcceptProc()
-{
-
-}
-
-void NetWorkLib::SendProc()
-{
-
+	//서버로 부터 이상한 세션키가 온다면? 세션 키도 관리대상인가?
+	//Session* cur = _Sessions[sessionKey];
+	return;
 }
 
 bool NetWorkLib::ReadConfig()

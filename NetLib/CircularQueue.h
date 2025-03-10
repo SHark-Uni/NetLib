@@ -5,7 +5,6 @@ namespace Common
 	class CircularQueue
 	{
 	public:
-		friend class Session;
 		CircularQueue();
 		CircularQueue(int size);
 		~CircularQueue()
@@ -50,7 +49,7 @@ namespace Common
 
 		int Enqueue(const char* pMessage, int size);
 		int Dequeue(char* out, int size);
-		int Peek(char* out, int size);
+		int Peek(char* out, int size) const;
 
 		inline char* GetBufferPtr()
 		{
@@ -66,7 +65,7 @@ namespace Common
 			return &_pBuffer[_Front];
 		}
 
-		inline int GetDirect_EnqueueSize()
+		inline int GetDirect_EnqueueSize() const
 		{
 			//Front가 0인 경우, R이 Capacity칸을 비워야하기 때문에.. +1을 못해줌.
 			if (_Front == 0)
@@ -86,7 +85,7 @@ namespace Common
 			return;
 		}
 
-		inline int GetDirect_DequeueSize()
+		inline int GetDirect_DequeueSize() const
 		{
 			if (_Front <= _Rear)
 			{

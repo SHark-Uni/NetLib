@@ -118,6 +118,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -136,9 +137,12 @@
   <ItemGroup>
     <ClInclude Include="CircularQueue.h" />
     <ClInclude Include="CircularQueueTest.h" />
+    <ClInclude Include="ContentDefines.h" />
     <ClInclude Include="ErrorMessage.h" />
+    <ClInclude Include="GameServer.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="MemoryPool.h" />
+    <ClInclude Include="MessageFormat.h" />
     <ClInclude Include="NetLib.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Session.h" />

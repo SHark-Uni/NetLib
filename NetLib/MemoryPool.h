@@ -19,7 +19,6 @@ namespace Common
 	{
 	public:
 		typedef char _BYTE;
-
 		union Slot
 		{
 			T _Element;
@@ -37,10 +36,8 @@ namespace Common
 		{
 
 		}
-
 		MemoryPool(const MemoryPool& other) = delete;
 		MemoryPool& operator=(const MemoryPool& rhs) = delete;
-
 		MemoryPool(MemoryPool&& other)
 			:_CurrentBucket(other._CurrentBucket)
 			, _CurSlot(other._CurSlot)
@@ -140,7 +137,6 @@ namespace Common
 			new (element) T(std::forward<Args>(args)...);
 			return element;
 		}
-
 		void deAllocate_Destructor(T* pMemory)
 		{
 			pMemory->~T();
@@ -155,11 +151,10 @@ namespace Common
 			}
 			return (_LastSlot - _CurSlot) / sizeof(Slot);
 		}
-		Slot* _CurrentBucket;
-		Slot* _CurSlot;
-		Slot* _LastSlot;
-		Slot* _FreeList;
-
+		static MemoryPool& getInstance()
+		{
+			return _singleton;
+		}
 #ifdef MEMORY_POOL_DEBUG
 		enum MEMPORY_GUARD
 		{
@@ -168,6 +163,11 @@ namespace Common
 		};
 #endif
 	private:
+		static MemoryPool<typename T, size_t BucketSize> _singleton;
+		Slot* _CurrentBucket;
+		Slot* _CurSlot;
+		Slot* _LastSlot;
+		Slot* _FreeList;
 		void allocateBucket()
 		{
 			_BYTE* pBucket = reinterpret_cast<_BYTE*>(operator new(BucketSize));

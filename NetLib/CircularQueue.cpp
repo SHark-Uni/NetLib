@@ -112,7 +112,7 @@ int CircularQueue::Dequeue(char* out, int size)
 	return fSize + cpySize;
 }
 
-int CircularQueue::Peek(char* out, int size)
+int CircularQueue::Peek(char* out, int size) const
 {
 	//비어있는 경우
 	if (_Front == _Rear)

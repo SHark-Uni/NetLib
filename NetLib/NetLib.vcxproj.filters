@@ -11,9 +11,6 @@
     <Filter Include="Common">
       <UniqueIdentifier>{4d2ec7d5-380b-4ff2-95b5-f751809b201f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Common\Message">
-      <UniqueIdentifier>{5b93d541-d869-4834-953a-ec3b50ad3439}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Common\DataStructure">
       <UniqueIdentifier>{984dcec7-7631-4da5-b482-4cb9c74ad380}</UniqueIdentifier>
     </Filter>
@@ -22,6 +19,15 @@
     </Filter>
     <Filter Include="LOG">
       <UniqueIdentifier>{bdba9492-9f88-4ade-93e9-9a40a45dea87}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameServer">
+      <UniqueIdentifier>{603e999e-349a-4711-84f8-2623e9c0d7ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameServer\Common">
+      <UniqueIdentifier>{3129d0eb-534b-431e-8fb2-da193b68311c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameServer\Message">
+      <UniqueIdentifier>{5b93d541-d869-4834-953a-ec3b50ad3439}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -65,6 +71,15 @@
     </ClInclude>
     <ClInclude Include="Config.h">
       <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="GameServer.h">
+      <Filter>GameServer</Filter>
+    </ClInclude>
+    <ClInclude Include="ContentDefines.h">
+      <Filter>GameServer\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageFormat.h">
+      <Filter>GameServer\Message</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

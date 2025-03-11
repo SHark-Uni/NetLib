@@ -6,9 +6,6 @@
 using namespace Common;
 using namespace NetLib;
 
-template<typename T, size_t BucketSize>
-MemoryPool<T, BucketSize> MemoryPool<T, BucketSize>::_singleton;
-
 NetWorkLib::~NetWorkLib()
 {
 	//Session들 메모리 풀로 반납. 

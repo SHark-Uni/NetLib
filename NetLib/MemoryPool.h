@@ -151,8 +151,9 @@ namespace Common
 			}
 			return (_LastSlot - _CurSlot) / sizeof(Slot);
 		}
-		static MemoryPool& getInstance()
+		static MemoryPool<T, BucketSize>& getInstance()
 		{
+			static MemoryPool<T, BucketSize> _singleton;
 			return _singleton;
 		}
 #ifdef MEMORY_POOL_DEBUG
@@ -163,7 +164,7 @@ namespace Common
 		};
 #endif
 	private:
-		static MemoryPool<typename T, BucketSize> _singleton;
+		//static MemoryPool<T, BucketSize> _singleton;
 		Slot* _CurrentBucket;
 		Slot* _CurSlot;
 		Slot* _LastSlot;

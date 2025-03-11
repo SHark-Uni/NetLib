@@ -17,17 +17,18 @@ GameServer::~GameServer()
 {
 
 }
-
+/*==================================
+onAcceptProc에서 할일
+1. 플레이어 생성 (Contents코드에서
+2. 다른 플레이어에게 내 플레이어 생성 메시지 보내기
+3. 기존 플레이어들 나에게 생성 메시지 보내기
+===================================*/
 void GameServer::OnAcceptProc(const int key)
 {
-	//onAcceptProc에서 할일 
-//1. 플레이어 생성 (Contents코드에서
-//2. 다른 플레이어에게 내 플레이어 생성 메시지 보내기
-//3. 기존 플레이어들 나에게 생성 메시지 보내기
-
 	//1. 플레이어 생성
 	int playerKey;
-	Player* newPlayer = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance().allocate();
+	MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
+	Player* newPlayer = pool.allocate();
 	playerKey = newPlayer->generatePlayerId();
 
 	newPlayer->Init(playerKey, key);
@@ -61,12 +62,12 @@ void GameServer::OnAcceptProc(const int key)
 	//내 세션은 있고, 플레이어도 위에서 등록함. 
 	//3. 나에게 기존 캐릭터 생성 메시지 보내기
 	MESSAGE_RES_CREATE_OTHER_CHARACTER otherChracterMsg;
-	int curId;
-	int curAction;
-	char curDir;
-	unsigned short curX;
-	unsigned short curY;
-	char hp;
+	int						curId;
+	int						curAction;
+	char					curDir;
+	unsigned short			curX;
+	unsigned short			curY;
+	char					hp;
 
 	for (auto& player : _Players)
 	{
@@ -82,6 +83,7 @@ void GameServer::OnAcceptProc(const int key)
 		curAction = cur->GetAction();
 		hp = cur->GetHp();
 
+		/*TODO : 직렬화 버퍼로 다 바꿀예정.*/
 		buildMsg_Header(
 			SIGNITURE,
 			sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER),
@@ -94,7 +96,6 @@ void GameServer::OnAcceptProc(const int key)
 		memcpy(buffer, &otherChracterMsg, sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
 		SendUniCast(key, buffer, sizeof(header_t) + sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
 
-		//움직이고 있는 상태였다면? 
 		//MOVE START 메시지도 보내야함.
 		if (curAction > 0)
 		{
@@ -147,4 +148,5 @@ void GameServer::update()
 	// 1. 플레이어 객체 파괴, 메모리 풀 반납.
 	// 2. 세션에게 객체 파괴 요청. 
 
+	//프레임마다 움직이기.
 }

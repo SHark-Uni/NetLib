@@ -149,6 +149,7 @@
     <ClInclude Include="MessageFormat.h" />
     <ClInclude Include="NetLib.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="PlayerDefine.h" />
     <ClInclude Include="Session.h" />

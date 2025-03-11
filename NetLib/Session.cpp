@@ -9,17 +9,14 @@ void Session::InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connect
 	_AddrInfo = connectInfo;
 	_Alive = true;
 	
-	MemoryPool<CircularQueue, RING_BUFFER_POOL_SIZE>& pool = MemoryPool<CircularQueue, RING_BUFFER_POOL_SIZE>::getInstance();
-
-	_pSendQueue = pool.allocate_constructor(SEND_BUFFER_SIZE);
-	_pRecvQueue = pool.allocate_constructor(RECV_BUFFER_SIZE);
+	//TODO : 오브젝트 풀로 RINGBUFFER 만들어서 생성 / 반납
+	_pRecvQueue = new CircularQueue(RECV_BUFFER_SIZE);
+	_pSendQueue = new CircularQueue(SEND_BUFFER_SIZE);
 }
 
 void NetLib::Session::DestroySession()
 {
-	MemoryPool<CircularQueue, RING_BUFFER_POOL_SIZE>& pool = MemoryPool<CircularQueue, RING_BUFFER_POOL_SIZE>::getInstance();
-	pool.deAllocate(_pSendQueue);
-	pool.deAllocate(_pRecvQueue);
+
 }
 
 void Session::GetIP(WCHAR* out, size_t buffersize)

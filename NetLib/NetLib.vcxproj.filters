@@ -102,5 +102,8 @@
     <ClInclude Include="PlayerDefine.h">
       <Filter>GameServer\Player</Filter>
     </ClInclude>
+    <ClInclude Include="ObjectPool.h">
+      <Filter>Common\DataStructure</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

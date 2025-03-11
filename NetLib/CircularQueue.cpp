@@ -1,8 +1,9 @@
-#include "CircularQueue.h"
+#include <string.h>
 #include <assert.h>
 
+#include "CircularQueue.h"
+#include "MemoryPool.h"
 using namespace Common;
-#include <string.h>
 
 CircularQueue::CircularQueue()
 	:_Front(0)
@@ -17,7 +18,9 @@ CircularQueue::CircularQueue(int size)
 	, _Rear(0)
 	, _Capacity(size)
 {
+	
 	_pBuffer = new char[size + 1];
+
 }
 
 //최대한 넣어주고 return.

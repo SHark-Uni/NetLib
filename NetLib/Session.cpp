@@ -3,12 +3,12 @@
 
 using namespace NetLib;
 
-void Session::InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo)
+void Session::InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo, const int key)
 {
 	_Socket = connectSocket;
 	_AddrInfo = connectInfo;
 	_Alive = true;
-	
+	_Key = key;
 	//TODO : 오브젝트 풀로 RINGBUFFER 만들어서 생성 / 반납
 	_pRecvQueue = new CircularQueue(RECV_BUFFER_SIZE);
 	_pSendQueue = new CircularQueue(SEND_BUFFER_SIZE);

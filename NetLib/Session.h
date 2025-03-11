@@ -15,14 +15,14 @@ namespace NetLib
 	class Session
 	{
 	public:
-		void InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo);
+		void InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo, const int key);
 		void DestroySession();
 
 		inline SOCKET GetSocket() const
 		{
 			return _Socket;
 		}
-		
+
 		inline bool CanSendData() const
 		{
 			return (_pSendQueue->GetCurrentSize() > 0);
@@ -41,6 +41,10 @@ namespace NetLib
 			return key++;
 		}
 		void GetIP(WCHAR* out, size_t buffersize);
+		inline int GetSessionKey() const
+		{
+			return _Key;
+		}
 		USHORT GetPort();
 	private:
 		friend class NetWorkLib;
@@ -54,6 +58,7 @@ namespace NetLib
 		CircularQueue* _pSendQueue;
 		CircularQueue* _pRecvQueue;
 		bool _Alive;
+		int _Key;
 		SOCKADDR_IN _AddrInfo;
 	};
 }

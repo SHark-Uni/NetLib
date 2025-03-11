@@ -217,7 +217,7 @@ void NetWorkLib::_RecvProc(Session* session)
 		}
 		pRecvQ->Dequeue(buffer, payLoadLen + sizeof(header_t));
 
-		OnRecvProc(buffer, payLoadLen, tmp, sizeof(header_t));
+		OnRecvProc(buffer, tmp, sizeof(header_t), session->GetSessionKey());
 	}
 	return;
 }
@@ -245,8 +245,8 @@ void NetWorkLib::_AcceptProc()
 	//己傍利栏肺 Accpet
 	//技记 积己
 	Session* newSession = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance().allocate();
-	newSession->InitSession(connectSocket, connectInfo);
 	int key = newSession->GenerateSessionKey();
+	newSession->InitSession(connectSocket, connectInfo, key);
 	_Sessions.insert({ key, newSession });
 
 	OnAcceptProc(key);

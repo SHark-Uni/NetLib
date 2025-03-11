@@ -38,7 +38,7 @@ namespace NetLib
 		===========*/
 
 		virtual void OnAcceptProc(const int key) = 0; 
-		virtual void OnRecvProc(char* message, size_t messageLen, char* header, size_t hLen) = 0;
+		virtual void OnRecvProc(char* message, char* header, size_t hLen, int sessionkey) = 0;
 
 		/* 技记 昏力夸没. */
 		void Disconnect(int sessionKey);

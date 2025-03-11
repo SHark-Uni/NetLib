@@ -35,7 +35,7 @@ void GameServer::OnAcceptProc(const int key)
 	_keys.insert({ key, playerKey });
 	_Players.insert({ playerKey, newPlayer });
 
-	//2. 다른친구들에게 내 캐릭터 생성 메시지 보내기(나 제외)
+	//2. 다른친구들에게 내 캐릭터 생성 메시지 보내기(나 포함)
 	header_t						header;
 	MESSAGE_RES_CREATE_MY_CHARACTER sendMsg;
 
@@ -57,10 +57,8 @@ void GameServer::OnAcceptProc(const int key)
 	char buffer[32] = { 0, };
 	memcpy(buffer, &header, sizeof(header_t));
 	memcpy(buffer, &sendMsg, sizeof(MESSAGE_RES_CREATE_MY_CHARACTER));
-
 	SendBroadCast(buffer, sizeof(MESSAGE_RES_CREATE_MY_CHARACTER) + sizeof(header_t));
-	//내 세션은 있고, 플레이어도 위에서 등록함. 
-	//3. 나에게 기존 캐릭터 생성 메시지 보내기
+
 	MESSAGE_RES_CREATE_OTHER_CHARACTER otherChracterMsg;
 	int						curId;
 	int						curAction;
@@ -69,6 +67,7 @@ void GameServer::OnAcceptProc(const int key)
 	unsigned short			curY;
 	char					hp;
 
+	//3. 나에게 기존 캐릭터 생성 메시지 보내기(내 캐릭터 제외)
 	for (auto& player : _Players)
 	{
 		if (player.first == playerKey)
@@ -115,13 +114,13 @@ void GameServer::OnAcceptProc(const int key)
 	}
 }
 
-void GameServer::OnRecvProc(char* message, size_t messageLen, char* header, size_t hLen)
+void GameServer::OnRecvProc(char* message, char* header, size_t hLen, SESSION_KEY key)
 {	
 	char msgType = reinterpret_cast<header_t*>(header)->_MessageType;
 	switch (msgType)
 	{
 	case static_cast<int>(MESSAGE_DEFINE::REQ_MOVE_START):
-
+		
 		break;
 	case static_cast<int>(MESSAGE_DEFINE::REQ_MOVE_STOP):
 
@@ -137,8 +136,37 @@ void GameServer::OnRecvProc(char* message, size_t messageLen, char* header, size
 		break;
 	default:
 		//TODO : 연결 끊어야함.
+		Disconnect(key);
 		break;
 	}
+	return;
+}
+
+/* 컨텐츠 구현 하기! 예외 케이스들 생각해보자.*/
+void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
+{
+	
+	
+}
+
+void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
+{
+
+}
+
+void GameServer::ReqAttackLeftHandProc(char* message,  const SESSION_KEY key)
+{
+
+}
+
+void GameServer::ReqAttackRightHandProc(char* message, const SESSION_KEY key)
+{
+
+}
+
+void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
+{
+
 }
 
 //프레임 로직 

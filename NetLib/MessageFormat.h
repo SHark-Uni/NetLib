@@ -83,7 +83,7 @@ namespace Common
 
 	typedef struct MESSAGE_REQ_MOVE_START
 	{
-		_BYTE _Direction;
+		_BYTE _Direction; // 8πÊ«‚
 		unsigned short _X;
 		unsigned short _Y;
 	}req_move_start_t;

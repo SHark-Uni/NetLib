@@ -2,6 +2,8 @@
 
 namespace Core
 {
+
+
 	class Player
 	{
 	public:
@@ -16,6 +18,23 @@ namespace Core
 		void Move(const int x, const int y);
 		void Attacked(const int damage);
 
+		inline void SetX(short x)
+		{
+			_X = x;
+		}
+		inline void SetY(short y)
+		{
+			_Y = y;
+		}
+		inline void SetAction(int action)
+		{
+			_Action = action;
+			return;
+		}
+		inline void SetDirection(char direction)
+		{
+			_Direction = direction;
+		}
 		inline char GetDirection() const
 		{
 			return _Direction;

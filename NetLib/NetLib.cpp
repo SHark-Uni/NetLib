@@ -1,7 +1,7 @@
 #include "NetLib.h"
 #include "Logger.h"
 #include "Session.h"
-
+#include "MessageFormat.h"
 
 using namespace Common;
 using namespace NetLib;
@@ -11,6 +11,14 @@ MemoryPool<T, BucketSize> MemoryPool<T, BucketSize>::_singleton;
 
 NetWorkLib::~NetWorkLib()
 {
+	//Session들 메모리 풀로 반납. 
+	for (auto& session : _Sessions)
+	{
+		Session* cur = session.second;
+		cur->DestroySession();
+		MemoryPool<Session, SESSION_POOL_SIZE>::getInstance().deAllocate(cur);
+	}
+
 	closesocket(_ListenSocket);
 	::WSACleanup();
 }
@@ -100,7 +108,7 @@ void NetWorkLib::Process()
 
 	const int SELECT_MAX_CNT = 63;
 	int maxLoopCnt = SELECT_MAX_CNT;
-	
+
 	/*이번 프레임의 인원들에 대해서만 처리해줌.*/
 	auto SesionStart_iter = _Sessions.begin();
 	auto iter = _Sessions.begin();
@@ -155,8 +163,6 @@ void NetWorkLib::Process()
 			break;
 		}
 	}
-	//진짜 Send하기
-
 }
 
 void NetWorkLib::_RecvProc(Session* session)
@@ -184,14 +190,39 @@ void NetWorkLib::_RecvProc(Session* session)
 		session->SetDisconnect();
 		return;
 	}
-	pRecvQ->MoveRear(recvLen);	
-	//OnRecvProc() 호출
-	//Header체크
-	//Header Peek
-	//완성되었다면, header의 길이확인
-	//header의 길이 확인 후, payload완성여부 확인
+	pRecvQ->MoveRear(recvLen);
 
-	//payload완성되었다면 Dequeue
+	// 한번 받은 메시지는 모두 처리한다.
+	while (true)
+	{	//TODO : 이 부분은 컨텐츠와 결합되버림. 추후 변경
+		//왜냐하면, Player측에서 매번 Session에게, RecvBuffer나 SendBuffer를 확인해가면서 header를 체크하는게 좀 비효율적이라 생각함. 
+		int peekMessageLen;
+		int payLoadLen;
+
+		char tmp[3] = { 0 };
+		peekMessageLen = pRecvQ->Peek(tmp, sizeof(header_t));
+		if (peekMessageLen < sizeof(header_t))
+		{
+			break;
+		}
+		header_t* header = reinterpret_cast<header_t*>(tmp);
+		if (header->_Code != SIGNITURE)
+		{
+			break;
+		}
+
+		payLoadLen = header->_PayloadLen;
+		char buffer[32] = { 0, };
+		peekMessageLen = pRecvQ->Peek(buffer, (payLoadLen + sizeof(header_t)));
+		if (peekMessageLen < payLoadLen + sizeof(header_t))
+		{
+			break;
+		}
+		pRecvQ->Dequeue(buffer, payLoadLen + sizeof(header_t));
+
+		OnRecvProc(buffer, payLoadLen, tmp, sizeof(header_t));
+	}
+	return;
 }
 
 void NetWorkLib::_AcceptProc()
@@ -215,19 +246,13 @@ void NetWorkLib::_AcceptProc()
 	}
 
 	//성공적으로 Accpet
-	
 	//세션 생성
 	Session* newSession = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance().allocate();
-	newSession->CreateSession(connectSocket, connectInfo);
+	newSession->InitSession(connectSocket, connectInfo);
 	int key = newSession->GenerateSessionKey();
 	_Sessions.insert({ key, newSession });
 
 	OnAcceptProc(key);
-	//onAcceptProc에서 할일 
-	//1. 플레이어 생성 (Contents코드에서
-	//2. 다른 플레이어에게 내 플레이어 생성 메시지 보내기
-	//3. 기존 플레이어들 나에게 생성 메시지 보내기
-
 }
 
 void NetWorkLib::_SendProc(Session* session)
@@ -236,17 +261,16 @@ void NetWorkLib::_SendProc(Session* session)
 	int errorCode;
 	CircularQueue* const pSendQueue = session->_pSendQueue;
 	int sendQLen = pSendQueue->GetDirect_DequeueSize();
-	
+
 	sendLen = ::send(session->GetSocket(), pSendQueue->GetFrontPtr(), sendQLen, 0);
 	if (sendLen == SOCKET_ERROR)
 	{
-		//send시 WOULDBLOCK는 L4의 송신버퍼가 꽉찼다는거다. 이건 상대방의 수신이 다 찼다는거임. 
-		//나머지 에러들은 연결이 끊겼거나.. 등에는 그냥 끊어주면 됨.
+		// send시 WOULDBLOCK는 L4의 송신버퍼가 꽉찼다는거다. 이건 상대방의 수신이 다 찼다는거임. 
+		// 나머지 에러들은 연결이 끊겼거나.. 등에는 그냥 끊어주면 됨.
 		// 안끊어줘야할 사유가 있나?
 		session->SetDisconnect();
 		return;
 	}
-	// L7버퍼에서 L4로 원하는 만큼 복사 x 
 	if (sendLen < sendQLen)
 	{
 		session->SetDisconnect();
@@ -266,11 +290,10 @@ void NetWorkLib::SendUniCast(const int sessionKey, char* message, const size_t m
 		{
 			return;
 		}
-		
+
 		CircularQueue* const curSendQ = findSession->_pSendQueue;
 		enqueueLen = curSendQ->Enqueue(message, messageLen);
-		// 요청한 만큼 복사를 못함. L7버퍼가 꽉 차는 경우. 
-		// 이때, 끊어주기로함 우리는. 왜? => 꼭 기억해야함. 
+
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
 			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
@@ -284,7 +307,7 @@ void NetWorkLib::SendUniCast(const int sessionKey, char* message, const size_t m
 void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
 {
 	int enqueueLen;
-	for (const auto& session : _Sessions)
+	for (auto& session : _Sessions)
 	{
 		Session* cur = session.second;
 		if (cur->GetConnection() == false)
@@ -306,7 +329,7 @@ void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
 void NetWorkLib::SendBroadCast(int exceptSession, char* message, const size_t messageLen)
 {
 	int enqueueLen;
-	for (const auto& session : _Sessions)
+	for (auto& session : _Sessions)
 	{
 		int curkey = session.first;
 		Session* cur = session.second;
@@ -335,12 +358,18 @@ void NetWorkLib::Disconnect(int sessionKey)
 {
 	//서버로 부터 이상한 세션키가 온다면? 세션 키도 관리대상인가?
 	const auto& iter = _Sessions.find(sessionKey);
+	Session* cur = iter->second;
 	if (iter != _Sessions.end())
 	{
-		iter->second->SetDisconnect();
+		cur->SetDisconnect();
 		return;
 	}
 	return;
+}
+
+void NetWorkLib::CleanupSession()
+{
+
 }
 
 bool NetWorkLib::ReadConfig()
@@ -370,7 +399,7 @@ bool NetWorkLib::ReadConfig()
 		}
 
 		//PORT  포트정보
-		WCHAR* tmp;
+		WCHAR* tmp = nullptr;
 		Token = wcstok_s(buffer, delims, &tmp);
 
 		if (wcscmp(L"PORT", Token) == 0)

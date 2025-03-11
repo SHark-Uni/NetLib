@@ -129,9 +129,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CircularQueue.cpp" />
+    <ClCompile Include="GameServer.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MessageBuilder.cpp" />
     <ClCompile Include="NetLib.cpp" />
+    <ClCompile Include="Player.cpp" />
     <ClCompile Include="Session.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -142,9 +145,12 @@
     <ClInclude Include="GameServer.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="MemoryPool.h" />
+    <ClInclude Include="MessageBuilder.h" />
     <ClInclude Include="MessageFormat.h" />
     <ClInclude Include="NetLib.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="PlayerDefine.h" />
     <ClInclude Include="Session.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

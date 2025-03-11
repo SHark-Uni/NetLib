@@ -4,21 +4,24 @@
 
 namespace Core
 {
+	class Player;
 	class GameServer : public NetLib::NetWorkLib
 	{
 	public:
-		GameServer() = default;
+		GameServer();
 		virtual ~GameServer();
-		//NetLIB -> Server 
-		void OnAcceptProc(char* message) override;
-		void OnRecvProc(char* message) override;
+		void OnAcceptProc(const int key) override;
+		void OnRecvProc(char* message, size_t messageLen, char* header, size_t hLen) override;
 
 		void update();
-
-		/* TODO : 캐릭터가 삭제되는 경우는 더 생각 해보자. */
-		//SERVER -> NETLIB
-		void OnDestroyProc() override;
 	private:
-		/* TODO PLAYER 관리 개체 만들어야함.*/
+		typedef int PLAYER_KEY;
+		typedef int SESSION_KEY;
+		enum
+		{
+			PLAYER_POOL_SIZE = 4096,
+		};
+		std::unordered_map<PLAYER_KEY, Player*> _Players;
+		std::unordered_map<SESSION_KEY, PLAYER_KEY> _keys;
 	};
 }

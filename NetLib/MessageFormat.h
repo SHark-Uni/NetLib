@@ -2,8 +2,9 @@
 
 namespace Common
 {
+	constexpr unsigned char SIGNITURE = 0x89;
 	typedef char _BYTE;
-	enum class MESSAGE_DEFINE
+	enum class MESSAGE_DEFINE : int
 	{
 		RES_CREATE_MY_CHARACTER = 0,
 		RES_CREATE_OTHER_CHARACTER,
@@ -22,7 +23,6 @@ namespace Common
 		RES_ATTACK_KICK,
 
 		RES_DAMAGE = 30,
-
 
 		REQ_SYNC = 250,
 		RES_SYNC,
@@ -45,8 +45,19 @@ namespace Common
 		LEFT = 0,
 		RIGHT = 4
 	};
-
+	/*
+		BYTE	byCode;			// 패킷코드 0x89 고정.
+		BYTE	bySize;			// 패킷 사이즈.
+		BYTE	byType;			// 패킷타입.
+	*/
 	#pragma pack(push, 1)
+	typedef struct MESSAGE_HEADER
+	{
+		_BYTE _Code;
+		_BYTE _PayloadLen;
+		_BYTE _MessageType;
+	}header_t;
+
 	typedef struct MESSAGE_RES_CREATE_MY_CHARACTER
 	{
 		int _Id;

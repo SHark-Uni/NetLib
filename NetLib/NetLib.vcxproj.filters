@@ -29,6 +29,9 @@
     <Filter Include="GameServer\Message">
       <UniqueIdentifier>{5b93d541-d869-4834-953a-ec3b50ad3439}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GameServer\Player">
+      <UniqueIdentifier>{03cb555f-1986-488a-9135-8f0f86de4d24}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -45,6 +48,15 @@
     </ClCompile>
     <ClCompile Include="Session.cpp">
       <Filter>NetLib</Filter>
+    </ClCompile>
+    <ClCompile Include="GameServer.cpp">
+      <Filter>GameServer</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>GameServer\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageBuilder.cpp">
+      <Filter>GameServer\Message</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -80,6 +92,15 @@
     </ClInclude>
     <ClInclude Include="MessageFormat.h">
       <Filter>GameServer\Message</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageBuilder.h">
+      <Filter>GameServer\Message</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>GameServer\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerDefine.h">
+      <Filter>GameServer\Player</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

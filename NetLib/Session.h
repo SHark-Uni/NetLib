@@ -7,19 +7,16 @@
 
 #include "CircularQueue.h"
 
-
 using namespace Common;
 namespace NetLib
 {
 
-	class NetWorkLib;
+	class NetWorkLib; 
 	class Session
 	{
 	public:
-		Session() = default;
-		virtual ~Session();
-
-		void CreateSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo);
+		void InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo);
+		void DestroySession();
 
 		inline SOCKET GetSocket() const
 		{
@@ -49,7 +46,7 @@ namespace NetLib
 		friend class NetWorkLib;
 		enum
 		{
-			RING_BUFFER_POOL_SIZE = 8192,
+			RING_BUFFER_POOL_SIZE = 4096,
 			SEND_BUFFER_SIZE = 4096,
 			RECV_BUFFER_SIZE = 1024,
 		};

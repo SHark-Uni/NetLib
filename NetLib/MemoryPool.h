@@ -163,7 +163,7 @@ namespace Common
 		};
 #endif
 	private:
-		static MemoryPool<typename T, size_t BucketSize> _singleton;
+		static MemoryPool<typename T, BucketSize> _singleton;
 		Slot* _CurrentBucket;
 		Slot* _CurSlot;
 		Slot* _LastSlot;

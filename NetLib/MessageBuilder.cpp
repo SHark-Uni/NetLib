@@ -41,6 +41,8 @@ namespace Core
 	{
 		message._Id = id;
 		message._Direction = direction;
+		message._X = x;
+		message._Y = y;
 		return;
 	}
 

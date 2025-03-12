@@ -6,6 +6,7 @@
 using namespace Common;
 using namespace NetLib;
 
+int g_count = 0;
 NetWorkLib::~NetWorkLib()
 {
 	//Session들 메모리 풀로 반납. 
@@ -99,37 +100,39 @@ eERROR_MESSAGE NetWorkLib::Init()
 void NetWorkLib::Process()
 {
 	int Flag;
-	FD_SET readSet;
-	FD_SET writeSet;
+
 	TIMEVAL option = { 0,0 };
 
 	const int SELECT_MAX_CNT = 63;
-	int maxLoopCnt = SELECT_MAX_CNT;
+	int maxLoopCnt = 0;
 
 	/*이번 프레임의 인원들에 대해서만 처리해줌.*/
 	auto SesionStart_iter = _Sessions.begin();
 	auto iter = _Sessions.begin();
 	auto SessionEnd_iter = _Sessions.end();
 
+	Session* curSession;
 	while (true)
 	{
+		FD_SET readSet;
+		FD_SET writeSet;
 		FD_ZERO(&readSet);
 		FD_ZERO(&writeSet);
-		maxLoopCnt = SELECT_MAX_CNT;
+		maxLoopCnt = 0;
 		FD_SET(_ListenSocket, &readSet);
 		/* TODO : 64번씩 돌아야함.MAX_LOOP_CNT로 64번씩 통제해주는 코드 추가해야함. */
-		for (; iter != SessionEnd_iter && maxLoopCnt < 0; ++iter)
+		for (; iter != SessionEnd_iter && maxLoopCnt < SELECT_MAX_CNT; ++iter)
 		{
-			Session* curSession = iter->second;
+			curSession = iter->second;
 			FD_SET(curSession->GetSocket(), &readSet);
 			if (curSession->CanSendData())
 			{
 				FD_SET(curSession->GetSocket(), &writeSet);
 			}
-			--maxLoopCnt;
+			++maxLoopCnt;
 		}
 
-		Flag = ::select(0, &readSet, nullptr, nullptr, &option);
+		Flag = ::select(0, &readSet, &writeSet, nullptr, &option);
 		if (Flag == SOCKET_ERROR)
 		{
 			Logger::Logging(static_cast<int>(eERROR_MESSAGE::SELECT_FAIL), __LINE__, L"SELECT ERROR");
@@ -142,9 +145,12 @@ void NetWorkLib::Process()
 
 		for (; SesionStart_iter != iter; ++SesionStart_iter)
 		{
-			Session* curSession = SesionStart_iter->second;
+			curSession = SesionStart_iter->second;
 			if (FD_ISSET(curSession->GetSocket(), &readSet))
 			{
+				printf("============================================================\n");
+				printf("SESSION Key : %d | In Network Code | COUNT : %d|\n", curSession->GetSessionKey(), g_count);
+				printf("============================================================\n");
 				_RecvProc(curSession);
 			}
 
@@ -159,6 +165,7 @@ void NetWorkLib::Process()
 		{
 			break;
 		}
+
 	}
 }
 
@@ -216,7 +223,11 @@ void NetWorkLib::_RecvProc(Session* session)
 			break;
 		}
 		pRecvQ->Dequeue(buffer, payLoadLen + sizeof(header_t));
-
+		int debugKey = session->GetSessionKey();
+		printf("============================================================\n");
+		printf("SESSION Key : %d | In Network Code |  COUNT : %d | \n", debugKey, g_count);
+		printf("RECEIVE HEADER , CODE : %d | TYPE :%d | PAYLOADLEN : %d\n", header->_Code, header->_MessageType, header->_PayloadLen);
+		printf("============================================================\n");
 		OnRecvProc(buffer, tmp, sizeof(header_t), session->GetSessionKey());
 	}
 	return;

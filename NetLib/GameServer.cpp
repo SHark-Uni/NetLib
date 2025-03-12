@@ -37,7 +37,7 @@ void GameServer::OnAcceptProc(const int key)
 	_keys.insert({ key, playerKey });
 	_Players.insert({ playerKey, newPlayer });
 
-	//2. 다른친구들에게 내 캐릭터 생성 메시지 보내기(나 포함)
+	//1. 내 캐릭터 생성 메시지 전송
 	header_t						header;
 	MESSAGE_RES_CREATE_MY_CHARACTER sendMsg;
 
@@ -59,16 +59,28 @@ void GameServer::OnAcceptProc(const int key)
 	char buffer[32] = { 0, };
 	memcpy(buffer, &header, sizeof(header_t));
 	memcpy(buffer + sizeof(header_t), &sendMsg, sizeof(MESSAGE_RES_CREATE_MY_CHARACTER));
-	SendBroadCast(buffer, sizeof(MESSAGE_RES_CREATE_MY_CHARACTER) + sizeof(header_t));
+	SendUniCast(key, buffer, sizeof(MESSAGE_RES_CREATE_MY_CHARACTER) + sizeof(header_t));
 
+	//2.내 캐릭터 생성 메시지 모두에게 보내주기
 	MESSAGE_RES_CREATE_OTHER_CHARACTER otherChracterMsg;
+	buildMsg_Header(
+		SIGNITURE,
+		sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER),
+		static_cast<int>(MESSAGE_DEFINE::RES_CREATE_OTHER_CHARACTER),
+		header
+	);
+	buildMsg_createOtherCharacter(playerKey, newPlayer->GetDirection(), newPlayer->GetX(), newPlayer->GetY(), newPlayer->GetHp(), otherChracterMsg);
+	memcpy(buffer, &header, sizeof(header_t));
+	memcpy(buffer + sizeof(header_t), &otherChracterMsg, sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
+	SendBroadCast(key, buffer, sizeof(header_t) + sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
+
+	//3. 기존에 있던 캐릭터들 생성해주는 메시지 보내기.
 	int						curId;
 	int						curAction;
 	char					curDir;
 	unsigned short			curX;
 	unsigned short			curY;
 	char					hp;
-
 	//3. 나에게 기존 캐릭터 생성 메시지 보내기(내 캐릭터 제외)
 	for (auto& player : _Players)
 	{
@@ -119,22 +131,25 @@ void GameServer::OnAcceptProc(const int key)
 void GameServer::OnRecvProc(char* message, char* header, size_t hLen, SESSION_KEY key)
 {
 	char msgType = reinterpret_cast<header_t*>(header)->_MessageType;
+	//Header 제외하고 payload 넘겨주자
+	char* payload = message + hLen;
+
 	switch (msgType)
 	{
 	case static_cast<int>(MESSAGE_DEFINE::REQ_MOVE_START):
-		ReqMoveStartProc(message, key);
+		ReqMoveStartProc(payload, key);
 		break;
 	case static_cast<int>(MESSAGE_DEFINE::REQ_MOVE_STOP):
-		ReqMoveStopProc(message, key);
+		ReqMoveStopProc(payload, key);
 		break;
 	case static_cast<int>(MESSAGE_DEFINE::REQ_ATTACK_LEFT_HAND):
-		ReqAttackLeftHandProc(message, key);
+		ReqAttackLeftHandProc(payload, key);
 		break;
 	case static_cast<int>(MESSAGE_DEFINE::REQ_ATTACK_RIGHT_HAND):
-		ReqAttackRightHandProc(message, key);
+		ReqAttackRightHandProc(payload, key);
 		break;
 	case static_cast<int>(MESSAGE_DEFINE::REQ_ATTACK_KICK):
-		ReqAttackKickProc(message, key);
+		ReqAttackKickProc(payload, key);
 		break;
 	default:
 		//TODO : 연결 끊어야함.
@@ -147,13 +162,8 @@ void GameServer::OnRecvProc(char* message, char* header, size_t hLen, SESSION_KE
 /* 컨텐츠 구현 하기! 예외 케이스들 생각해보자.*/
 void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 {
-	/*TODO :
-	1. Player 상태 변경
-	  - 움직이는 방향에 따라, 캐릭터 방향도 돌려줘야함.
-
-	*/
 	MESSAGE_REQ_MOVE_START* recvMsg = reinterpret_cast<MESSAGE_REQ_MOVE_START*>(message);
-	char direction = recvMsg->_Direction;
+	char action = recvMsg->_Direction;
 	unsigned short recvX = recvMsg->_X;
 	unsigned short recvY = recvMsg->_Y;
 
@@ -166,9 +176,9 @@ void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 	//내 캐릭터 정보 찾기
 	int playerKey = _keys.find(key)->second;
 	Player* player = _Players.find(playerKey)->second;
-
+	player->SetAction(action);
 	//방향설정
-	switch (direction)
+	switch (action)
 	{
 	case static_cast<int>(MOVE_DIRECTION::LEFT):
 	case static_cast<int>(MOVE_DIRECTION::LEFT_TOP):
@@ -186,18 +196,21 @@ void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 		//이상한 방향 무시
 		return;
 	}
-	player->SetAction(direction);
 
 	//나 빼고 다 보내기
 	MESSAGE_RES_MOVE_START sendMsg;
 	MESSAGE_HEADER header;
 	char buffer[32] = { 0 , };
 	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_START), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_START), header);
-	buildMsg_move_start(playerKey, direction, recvX, recvY, sendMsg);
+	buildMsg_move_start(playerKey, action, recvX, recvY, sendMsg);
 
 	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_MOVE_START));
 
+	printf("============================================================\n");
+	printf("MOVE START MESSAGE\n");
+	printf("PLAYER ID : %d | SESSION ID : %d | PARAMETER KEY : %d |CUR_X : %hd  | CUR_Y : %hd |\n", player->GetPlayerId(), player->GetSessionId(), key, player->GetX(), player->GetY());
+	printf("============================================================\n");
 	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_MOVE_START) + sizeof(MESSAGE_HEADER));
 }
 
@@ -211,7 +224,20 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 	unsigned short recvX = recvMsg->_X;
 	unsigned short recvY = recvMsg->_Y;
 
-	//범위 넘는 메시지 무시
+	//내 캐릭터 정보 찾기
+	int playerKey = _keys.find(key)->second;
+	Player* player = _Players.find(playerKey)->second;
+
+	short playerX = player->GetX();
+	short playerY = player->GetY();
+
+	if (abs(recvX - playerX) > static_cast<int>(MAX_MAP_BOUNDARY::MAX_ERROR_BOUNDARY) ||
+		abs(recvY - playerY) > static_cast<int>(MAX_MAP_BOUNDARY::MAX_ERROR_BOUNDARY))
+	{
+		Disconnect(key);
+		return;
+	}
+
 	if (recvX > static_cast<int>(MAX_MAP_BOUNDARY::RIGHT) || recvY > static_cast<int>(MAX_MAP_BOUNDARY::BOTTOM))
 	{
 		return;
@@ -221,36 +247,25 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 		return;
 	}
 
-	//내 캐릭터 정보 찾기
-	int playerKey = _keys.find(key)->second;
-	Player* player = _Players.find(playerKey)->second;
+	player->SetX(recvX);
+	player->SetY(recvY);
+	player->SetDirection(direction);
+	player->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
 
-	short playerX = player->GetX();
-	short playerY = player->GetY();
 
-	//오차범위 이내
-	if (abs(recvX - playerX) <= static_cast<int>(MAX_MAP_BOUNDARY::MAX_ERROR_BOUNDARY) &&
-		abs(recvY - playerY) <= static_cast<int>(MAX_MAP_BOUNDARY::MAX_ERROR_BOUNDARY))
-	{
-		player->SetX(recvX);
-		player->SetY(recvY);
-		player->SetDirection(direction);
-		player->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
-		//무브스탑 메시지 생성 후 보내기
+	printf("MOVE STOP MESSAGE\n");
+	printf("PLAYER ID : %d | SESSION ID : %d | PARAM KEY : %d |CUR_X : %hd  | CUR_Y : %hd |\n", player->GetPlayerId(), player->GetSessionId(), key, player->GetX(), player->GetY());
+	//무브스탑 메시지 생성 후 보내기
+	MESSAGE_RES_MOVE_STOP sendMsg;
+	MESSAGE_HEADER header;
+	char buffer[32] = { 0 , };
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_STOP), header);
+	buildMsg_move_stop(playerKey, direction, player->GetX(), player->GetY(), sendMsg);
 
-		MESSAGE_RES_MOVE_STOP sendMsg;
-		MESSAGE_HEADER header;
-		char buffer[32] = { 0 , };
-		buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_STOP), header);
-		buildMsg_move_stop(playerKey, direction, player->GetX(), player->GetY(), sendMsg);
+	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_MOVE_STOP));
+	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_MOVE_STOP));
 
-		memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-		memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_MOVE_STOP));
-		SendBroadCast(key, buffer, sizeof(MESSAGE_RES_MOVE_STOP));
-		return;
-	}
-	//오차범위가 너무 난다면 끊어준다.
-	Disconnect(key);
 	return;
 }
 
@@ -291,12 +306,12 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 	if (attacker->GetAction() != static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION))
 	{
 		attacker->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
-		
+
 		buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), sizeof(MESSAGE_RES_MOVE_STOP), header);
 		buildMsg_move_stop(playerKey, attacker->GetDirection(), myX, myY, moveStopMsg);
 		memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 		memcpy(buffer + sizeof(MESSAGE_HEADER), &moveStopMsg, sizeof(MESSAGE_RES_MOVE_STOP));
-		
+
 		//클라는 자기가 알아서 멈출거임. 
 		SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_MOVE_STOP));
 	}
@@ -314,10 +329,10 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 		int targetX = target->GetX();
 		int targetY = target->GetY();
 		if (CheckAttackInRange(
-			myX, 
-			myY, 
-			static_cast<int>(PLAYER_ATTACK_RANGE::LEFT_HAND_X), 
-			static_cast<int>(PLAYER_ATTACK_RANGE::LEFT_HAND_Y), 
+			myX,
+			myY,
+			static_cast<int>(PLAYER_ATTACK_RANGE::LEFT_HAND_X),
+			static_cast<int>(PLAYER_ATTACK_RANGE::LEFT_HAND_Y),
 			targetX, targetY, attackDir))
 		{
 			target->Attacked(static_cast<int>(PLAYER_DAMAGE::LEFT_HAND));
@@ -438,7 +453,6 @@ void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
 	buildMsg_attack_kick(playerKey, attackDir, myX, myY, sendMsg);
 	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_KICK));
-
 	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_KICK) + sizeof(MESSAGE_HEADER));
 
 	//움직이고 있었다면, 멈추는 Message 전송 
@@ -516,11 +530,6 @@ bool GameServer::CheckDirection(char direction)
 	return false;
 }
 
-bool GameServer::CheckAction(int Action)
-{
-
-	return false;
-}
 
 void GameServer::ProcessPlayerDeath(Player* player)
 {
@@ -545,10 +554,25 @@ void GameServer::ProcessPlayerDeath(Player* player)
 //프레임 로직 
 void GameServer::update()
 {
+	DWORD nextTick;
+	DWORD sleepTime;
+
+	nextTick = timeGetTime();
+
+	nextTick += TIME_PER_FRAME;
+	sleepTime = nextTick - timeGetTime();
+	if (sleepTime > 0)
+	{
+		Sleep(sleepTime);
+	}
+
 	for (auto& player : _Players)
 	{
 		Player* cur = player.second;
-		
+		//FOR DEBUG
+		/*printf("============================================================\n");
+		printf("PLAYER X : %d | PLAYER Y : %d \n", cur->GetX(), cur->GetY());
+		printf("============================================================\n");*/
 		//플레이어가 죽었다면,
 		if (cur->GetHp() < 0)
 		{
@@ -588,8 +612,7 @@ void GameServer::update()
 			//가만히 있거나, 이상한 입력이 왔을 때 무시.
 			break;
 		}
-		//FOR DEBUG
-		printf("PLAYER X : %d | PLAYER Y : %d \n", cur->GetX(), cur->GetY());
+
 	}
 
 

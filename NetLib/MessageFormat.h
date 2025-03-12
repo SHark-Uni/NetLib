@@ -2,7 +2,7 @@
 
 namespace Common
 {
-	constexpr unsigned char SIGNITURE = 0x89;
+	constexpr char SIGNITURE = 0x89;
 	typedef char _BYTE;
 	enum class MESSAGE_DEFINE : int
 	{

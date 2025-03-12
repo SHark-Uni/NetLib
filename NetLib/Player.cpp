@@ -22,26 +22,26 @@ void Player::OnPlayerDeath()
 	/*만약에 죽는효과가 있다면 여기다 구현*/
 }
 
-void Player::Move(const int x, const int y)
+void Player::Move(const short x, const short y)
 {
 	_X += x;
-	if (_X <= static_cast<int>(MAX_MAP_BOUNDARY::LEFT))
+	if (_X <= static_cast<short>(MAX_MAP_BOUNDARY::LEFT))
 	{
-		_X = static_cast<int>(MAX_MAP_BOUNDARY::LEFT);
+		_X = static_cast<short>(MAX_MAP_BOUNDARY::LEFT);
 		return;
 	}
-	if (_X >= static_cast<int>(MAX_MAP_BOUNDARY::RIGHT))
+	if (_X >= static_cast<short>(MAX_MAP_BOUNDARY::RIGHT))
 	{
-		_X = static_cast<int>(MAX_MAP_BOUNDARY::RIGHT);
+		_X = static_cast<short>(MAX_MAP_BOUNDARY::RIGHT);
 		return;
 	}
 	_Y += y;
-	if (_Y <= static_cast<int>(MAX_MAP_BOUNDARY::TOP))
+	if (_Y <= static_cast<short>(MAX_MAP_BOUNDARY::TOP))
 	{
 		_Y = static_cast<int>(MAX_MAP_BOUNDARY::TOP);
 		return;
 	}
-	if (_Y >= static_cast<int>(MAX_MAP_BOUNDARY::BOTTOM))
+	if (_Y >= static_cast<short>(MAX_MAP_BOUNDARY::BOTTOM))
 	{
 		_Y = static_cast<int>(MAX_MAP_BOUNDARY::BOTTOM);
 		return;

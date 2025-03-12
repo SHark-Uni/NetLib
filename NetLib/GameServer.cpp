@@ -171,13 +171,11 @@ void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 	switch (direction)
 	{
 	case static_cast<int>(MOVE_DIRECTION::LEFT):
-		_FALLTHROUGH
 	case static_cast<int>(MOVE_DIRECTION::LEFT_TOP):
 		player->SetDirection(static_cast<char>(CHARCTER_DIRECTION_2D::LEFT));
 		break;
 	case static_cast<int>(MOVE_DIRECTION::RIGHT_TOP):
 	case static_cast<int>(MOVE_DIRECTION::RIGHT):
-		_FALLTHROUGH
 	case static_cast<int>(MOVE_DIRECTION::RIGHT_BOTTOM):
 		player->SetDirection(static_cast<char>(CHARCTER_DIRECTION_2D::RIGHT));
 		break;
@@ -194,7 +192,7 @@ void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 	MESSAGE_RES_MOVE_START sendMsg;
 	MESSAGE_HEADER header;
 	char buffer[32] = { 0 , };
-	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_START), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_START));
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_START), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_START), header);
 	buildMsg_move_start(playerKey, direction, recvX, recvY, sendMsg);
 
 	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
@@ -208,7 +206,7 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 	// stop시 좌표설정 
 	// 틀어짐이 심하지 않으면 인정
 	// 많이 틀어지면 연결 끊기.
-	MESSAGE_REQ_MOVE_STOP* recvMsg;
+	MESSAGE_REQ_MOVE_STOP* recvMsg = reinterpret_cast<MESSAGE_REQ_MOVE_STOP*>(message);
 	char direction = recvMsg->_Direction;
 	unsigned short recvX = recvMsg->_X;
 	unsigned short recvY = recvMsg->_Y;
@@ -218,10 +216,7 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 	{
 		return;
 	}
-
-	//좌/우가 아닌경우 무시
-	if (direction != static_cast<int>(CHARCTER_DIRECTION_2D::LEFT) ||
-		direction != static_cast<int>(CHARCTER_DIRECTION_2D::RIGHT))
+	if (CheckDirection(direction) == false)
 	{
 		return;
 	}
@@ -247,7 +242,7 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 		MESSAGE_HEADER header;
 		char buffer[32] = { 0 , };
 		buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_STOP), header);
-		buildMsg_move_stop(playerKey, direction, player->GetX(), player->GetY());
+		buildMsg_move_stop(playerKey, direction, player->GetX(), player->GetY(), sendMsg);
 
 		memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 		memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_MOVE_STOP));
@@ -262,15 +257,13 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 {
 	MESSAGE_REQ_ATTACK_LEFT_HAND* recvMsg = reinterpret_cast<MESSAGE_REQ_ATTACK_LEFT_HAND*>(message);
-	//공격 방향
 	char attackDir = recvMsg->_Direction;
-	if (attackDir != static_cast<char>(CHARCTER_DIRECTION_2D::RIGHT) || static_cast<char>(CHARCTER_DIRECTION_2D::LEFT))
+
+	//이상향 방향이 들어왔다면 무시. (그럴일은 없겠지만)
+	if (CheckDirection(attackDir) == false)
 	{
 		return;
 	}
-
-	int RangeX = static_cast<int>(PLAYER_ATTACK_RANGE::LEFT_HAND_X);
-
 	unsigned short recvX = recvMsg->_X;
 	unsigned short recvY = recvMsg->_Y;
 
@@ -291,7 +284,23 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND));
 
-	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND));
+	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND) + sizeof(MESSAGE_HEADER));
+
+	//움직이고 있었다면, 멈추는 Message 전송 
+	MESSAGE_RES_MOVE_STOP moveStopMsg;
+	if (attacker->GetAction() != static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION))
+	{
+		attacker->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
+		
+		buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), sizeof(MESSAGE_RES_MOVE_STOP), header);
+		buildMsg_move_stop(playerKey, attacker->GetDirection(), myX, myY, moveStopMsg);
+		memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+		memcpy(buffer + sizeof(MESSAGE_HEADER), &moveStopMsg, sizeof(MESSAGE_RES_MOVE_STOP));
+		
+		//클라는 자기가 알아서 멈출거임. 
+		SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_MOVE_STOP));
+	}
+
 	//공격범위 판정
 	MESSAGE_RES_DAMAGE damageSendMsg;
 	for (auto& player : _Players)
@@ -302,25 +311,14 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 		{
 			continue;
 		}
-
 		int targetX = target->GetX();
 		int targetY = target->GetY();
-		//오른쪽 
-		if (attackDir == static_cast<int>(CHARCTER_DIRECTION_2D::RIGHT))
-		{
-			if (myX <= targetX && targetX <= (myX + RangeX) && abs(myY - targetY) <= 10)
-			{
-				target->Attacked(static_cast<int>(PLAYER_DAMAGE::LEFT_HAND));
-				buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), header);
-				buildMsg_damage(playerKey, target->GetPlayerId(), target->GetHp(), damageSendMsg);
-				memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-				memcpy(buffer + sizeof(MESSAGE_HEADER), &damageSendMsg, sizeof(MESSAGE_RES_DAMAGE));
-
-				SendUniCast(key, buffer, sizeof(MESSAGE_RES_DAMAGE));
-				continue;
-			}
-		}
-		if (myX - RangeX <= targetX && targetX <= myX + RangeX && abs(myY - targetY) <= 10)
+		if (CheckAttackInRange(
+			myX, 
+			myY, 
+			static_cast<int>(PLAYER_ATTACK_RANGE::LEFT_HAND_X), 
+			static_cast<int>(PLAYER_ATTACK_RANGE::LEFT_HAND_Y), 
+			targetX, targetY, attackDir))
 		{
 			target->Attacked(static_cast<int>(PLAYER_DAMAGE::LEFT_HAND));
 			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), header);
@@ -328,7 +326,7 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 			memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 			memcpy(buffer + sizeof(MESSAGE_HEADER), &damageSendMsg, sizeof(MESSAGE_RES_DAMAGE));
 
-			SendUniCast(key, buffer, sizeof(MESSAGE_RES_DAMAGE));
+			SendBroadCast(buffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
 		}
 	}
 }
@@ -336,20 +334,264 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 void GameServer::ReqAttackRightHandProc(char* message, const SESSION_KEY key)
 {
 	MESSAGE_REQ_ATTACK_RIGHT_HAND* recvMsg = reinterpret_cast<MESSAGE_REQ_ATTACK_RIGHT_HAND*>(message);
+	char attackDir = recvMsg->_Direction;
+
+	//이상향 방향이 들어왔다면 무시. (그럴일은 없겠지만)
+	if (CheckDirection(attackDir) == false)
+	{
+		return;
+	}
+	unsigned short recvX = recvMsg->_X;
+	unsigned short recvY = recvMsg->_Y;
+
+	//내 캐릭터 정보 찾기
+	int playerKey = _keys.find(key)->second;
+	Player* attacker = _Players.find(playerKey)->second;
+
+	int myX = attacker->GetX();
+	int myY = attacker->GetY();
+
+	MESSAGE_HEADER header;
+	MESSAGE_RES_ATTACK_RIGHT_HAND sendMsg;
+	char buffer[32] = { 0, };
+
+	//어택 Message Send
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_RIGHT_HAND), header);
+	buildMsg_attack_righthand(playerKey, attackDir, myX, myY, sendMsg);
+	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND));
+
+	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND) + sizeof(MESSAGE_HEADER));
+
+	//움직이고 있었다면, 멈추는 Message 전송 
+	MESSAGE_RES_MOVE_STOP moveStopMsg;
+	if (attacker->GetAction() != static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION))
+	{
+		attacker->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
+
+		buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), sizeof(MESSAGE_RES_MOVE_STOP), header);
+		buildMsg_move_stop(playerKey, attacker->GetDirection(), myX, myY, moveStopMsg);
+		memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+		memcpy(buffer + sizeof(MESSAGE_HEADER), &moveStopMsg, sizeof(MESSAGE_RES_MOVE_STOP));
+
+		//클라는 자기가 알아서 멈출거임. 
+		SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_MOVE_STOP));
+	}
+
+	//공격범위 판정
+	MESSAGE_RES_DAMAGE damageSendMsg;
+	for (auto& player : _Players)
+	{
+		Player* target = player.second;
+		//내가 내 자신을 때리면 안됨.
+		if (target->GetPlayerId() == playerKey)
+		{
+			continue;
+		}
+		int targetX = target->GetX();
+		int targetY = target->GetY();
+		if (CheckAttackInRange(
+			myX,
+			myY,
+			static_cast<int>(PLAYER_ATTACK_RANGE::RIGHT_HAND_X),
+			static_cast<int>(PLAYER_ATTACK_RANGE::RIGHT_HAND_Y),
+			targetX, targetY, attackDir))
+		{
+			target->Attacked(static_cast<int>(PLAYER_DAMAGE::RIGHT_HAND));
+			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), header);
+			buildMsg_damage(playerKey, target->GetPlayerId(), target->GetHp(), damageSendMsg);
+			memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+			memcpy(buffer + sizeof(MESSAGE_HEADER), &damageSendMsg, sizeof(MESSAGE_RES_DAMAGE));
+
+			SendBroadCast(buffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
+		}
+	}
+
 }
 
 void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
 {
 	MESSAGE_REQ_ATTACK_KICK* recvMsg = reinterpret_cast<MESSAGE_REQ_ATTACK_KICK*>(message);
+	char attackDir = recvMsg->_Direction;
 
+	//이상향 방향이 들어왔다면 무시. (그럴일은 없겠지만)
+	if (CheckDirection(attackDir) == false)
+	{
+		return;
+	}
+	unsigned short recvX = recvMsg->_X;
+	unsigned short recvY = recvMsg->_Y;
+
+	//내 캐릭터 정보 찾기
+	int playerKey = _keys.find(key)->second;
+	Player* attacker = _Players.find(playerKey)->second;
+
+	int myX = attacker->GetX();
+	int myY = attacker->GetY();
+
+	MESSAGE_HEADER header;
+	MESSAGE_RES_ATTACK_KICK sendMsg;
+	char buffer[32] = { 0, };
+
+	//어택 Message Send
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_KICK), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_KICK), header);
+	buildMsg_attack_kick(playerKey, attackDir, myX, myY, sendMsg);
+	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_KICK));
+
+	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_KICK) + sizeof(MESSAGE_HEADER));
+
+	//움직이고 있었다면, 멈추는 Message 전송 
+	MESSAGE_RES_MOVE_STOP moveStopMsg;
+	if (attacker->GetAction() != static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION))
+	{
+		attacker->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
+
+		buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), sizeof(MESSAGE_RES_MOVE_STOP), header);
+		buildMsg_move_stop(playerKey, attacker->GetDirection(), myX, myY, moveStopMsg);
+		memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+		memcpy(buffer + sizeof(MESSAGE_HEADER), &moveStopMsg, sizeof(MESSAGE_RES_MOVE_STOP));
+
+		//클라는 자기가 알아서 멈출거임. 
+		SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_MOVE_STOP));
+	}
+
+	//공격범위 판정
+	MESSAGE_RES_DAMAGE damageSendMsg;
+	for (auto& player : _Players)
+	{
+		Player* target = player.second;
+		//내가 내 자신을 때리면 안됨.
+		if (target->GetPlayerId() == playerKey)
+		{
+			continue;
+		}
+		int targetX = target->GetX();
+		int targetY = target->GetY();
+		if (CheckAttackInRange(
+			myX,
+			myY,
+			static_cast<int>(PLAYER_ATTACK_RANGE::KICK_X),
+			static_cast<int>(PLAYER_ATTACK_RANGE::KICK_Y),
+			targetX, targetY, attackDir))
+		{
+			target->Attacked(static_cast<int>(PLAYER_DAMAGE::KICK));
+			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), header);
+			buildMsg_damage(playerKey, target->GetPlayerId(), target->GetHp(), damageSendMsg);
+			memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+			memcpy(buffer + sizeof(MESSAGE_HEADER), &damageSendMsg, sizeof(MESSAGE_RES_DAMAGE));
+
+			SendBroadCast(buffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
+		}
+	}
 }
 
+bool GameServer::CheckAttackInRange(const short attackerX, const short attackerY, const int AttackRangeX, const int AttackRangeY, const short targetX, const short targetY, const char direction)
+{
+	if (direction == static_cast<int>(CHARCTER_DIRECTION_2D::RIGHT))
+	{
+		if (attackerX <= targetX && targetX <= (attackerX + AttackRangeX) && abs(attackerY - targetY) <= AttackRangeY)
+		{
+			return true;
+		}
+	}
+	//LEFT
+	else
+	{
+		if (attackerX - AttackRangeX <= targetX && targetX <= attackerX && abs(attackerY - targetY) <= 10)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool GameServer::CheckDirection(char direction)
+{
+	//좌/우가 아닌경우 무시
+	if (direction == static_cast<int>(CHARCTER_DIRECTION_2D::LEFT) || direction == static_cast<int>(CHARCTER_DIRECTION_2D::RIGHT))
+	{
+		return true;
+	}
+	return false;
+}
+
+bool GameServer::CheckAction(int Action)
+{
+
+	return false;
+}
+
+void GameServer::ProcessPlayerDeath(Player* player)
+{
+	MESSAGE_HEADER header;
+	MESSAGE_RES_DELETE_CHARACTER sendMsg;
+	int seesionKey = player->GetSessionId();
+	int playerKey = player->GetPlayerId();
+
+	char buffer[32] = { 0, };
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DELETE_CHARACTER), static_cast<char>(MESSAGE_DEFINE::RES_DELETE_CHARACTER), header);
+	buildMsg_deleteCharacter(playerKey, sendMsg);
+
+	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_DELETE_CHARACTER));
+
+	SendBroadCast(seesionKey, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_DELETE_CHARACTER));
+
+	Disconnect(seesionKey);
+	MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
+	pool.deAllocate(player);
+}
 //프레임 로직 
 void GameServer::update()
 {
-	//플레이어가 죽었다면,
-	// 1. 플레이어 객체 파괴, 메모리 풀 반납.
-	// 2. 세션에게 객체 파괴 요청. 
+	for (auto& player : _Players)
+	{
+		Player* cur = player.second;
+		
+		//플레이어가 죽었다면,
+		if (cur->GetHp() < 0)
+		{
+			ProcessPlayerDeath(cur);
+			_Players.erase(player.first);
+			continue;
+		}
+
+		int action = cur->GetAction();
+		switch (action)
+		{
+		case static_cast<int>(MOVE_DIRECTION::LEFT):
+			cur->Move(-(static_cast<short>(PLAYER_MOVE_SPEED::X_SPEED)), 0);
+			break;
+		case static_cast<int>(MOVE_DIRECTION::LEFT_TOP):
+			cur->Move(-(static_cast<short>(PLAYER_MOVE_SPEED::X_SPEED)), -(static_cast<short>(PLAYER_MOVE_SPEED::Y_SPEED)));
+			break;
+		case static_cast<int>(MOVE_DIRECTION::TOP):
+			cur->Move(0, -(static_cast<short>(PLAYER_MOVE_SPEED::Y_SPEED)));
+			break;
+		case static_cast<int>(MOVE_DIRECTION::RIGHT_TOP):
+			cur->Move(static_cast<short>(PLAYER_MOVE_SPEED::X_SPEED), -(static_cast<short>(PLAYER_MOVE_SPEED::Y_SPEED)));
+			break;
+		case static_cast<int>(MOVE_DIRECTION::RIGHT):
+			cur->Move(static_cast<short>(PLAYER_MOVE_SPEED::X_SPEED), 0);
+			break;
+		case static_cast<int>(MOVE_DIRECTION::RIGHT_BOTTOM):
+			cur->Move(static_cast<short>(PLAYER_MOVE_SPEED::X_SPEED), static_cast<short>(PLAYER_MOVE_SPEED::Y_SPEED));
+			break;
+		case static_cast<int>(MOVE_DIRECTION::BOTTOM):
+			cur->Move(0, static_cast<short>(PLAYER_MOVE_SPEED::Y_SPEED));
+			break;
+		case static_cast<int>(MOVE_DIRECTION::LEFT_BOTTOM):
+			cur->Move(-(static_cast<short>(PLAYER_MOVE_SPEED::X_SPEED)), static_cast<short>(PLAYER_MOVE_SPEED::Y_SPEED));
+			break;
+		default:
+			//가만히 있거나, 이상한 입력이 왔을 때 무시.
+			break;
+		}
+		//FOR DEBUG
+		printf("PLAYER X : %d | PLAYER Y : %d \n", cur->GetX(), cur->GetY());
+	}
+
 
 	//프레임마다 움직이기.
 }

@@ -19,31 +19,26 @@ namespace NetLib
 	public:
 		NetWorkLib() = default;
 		virtual ~NetWorkLib();
-
+		Common::eERROR_MESSAGE Init();
+		void Process();
+		void CleanupSession();
 		//이동, 복사 생성자들은?
 	protected:
-		Common::eERROR_MESSAGE Init();
 		/*=======
 			TODO : RUDP
 		===========*/
 		//bool InitForUDP();
-
-		void Process();
 		void SendUniCast(const int sessionKey, char* message, const size_t messageLen);
 		void SendBroadCast(char* message, const size_t messageLen);
 		void SendBroadCast(int exceptSession, char* message, const size_t messageLen);
-
 		/*========
 		* 상속받아서 게임 서버에서 컨텐츠 구현 
 		===========*/
-
 		virtual void OnAcceptProc(const int key) = 0; 
 		virtual void OnRecvProc(char* message, char* header, size_t hLen, int sessionkey) = 0;
-
 		/* 세션 삭제요청. */
 		void Disconnect(int sessionKey);
 		/*TODO */
-		void CleanupSession();
 	private:
 		//세션들 
 		std::unordered_map<int, Session*> _Sessions;

@@ -15,7 +15,7 @@ namespace Core
 			static int playerId = 0;
 			return playerId++;
 		}
-		void Move(const int x, const int y);
+		void Move(const short x, const short y);
 		void Attacked(const int damage);
 
 		inline void SetX(short x)

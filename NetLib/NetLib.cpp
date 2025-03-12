@@ -366,7 +366,18 @@ void NetWorkLib::Disconnect(int sessionKey)
 
 void NetWorkLib::CleanupSession()
 {
+	for (auto& session : _Sessions)
+	{
+		Session* cur = session.second;
+		int sessionKey = session.first;
+		if (cur->GetConnection() == false)
+		{
+			MemoryPool<Session, SESSION_POOL_SIZE>& pool = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance();
 
+			pool.deAllocate(cur);
+			_Sessions.erase(sessionKey);
+		}
+	}
 }
 
 bool NetWorkLib::ReadConfig()

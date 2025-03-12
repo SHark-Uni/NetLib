@@ -21,10 +21,15 @@ namespace Core
 		void ReqAttackLeftHandProc(char* message, const SESSION_KEY key);
 		void ReqAttackRightHandProc(char* message, const SESSION_KEY key);
 		void ReqAttackKickProc(char* message, const SESSION_KEY key);
+		
+		bool CheckAttackInRange(const short attackerX, const short attackerY, const int AttackRangeX, const int AttackRangeY, const short targetX, const short targetY, const char direction);
+		bool CheckDirection(char direction);
+		bool CheckAction(int Action);
+
+		void ProcessPlayerDeath(Player* player);
 
 		void update();
 	private:
-
 		enum
 		{
 			PLAYER_POOL_SIZE = 4096,

@@ -17,6 +17,12 @@ namespace Core
 		BOTTOM = 6,
 		LEFT_BOTTOM = 7
 	};
+
+	enum class PLAYER_MOVE_SPEED
+	{
+		X_SPEED = 3,
+		Y_SPEED = 2,
+	};
 	enum class PLAYER_DAMAGE
 	{
 		LEFT_HAND = 5,

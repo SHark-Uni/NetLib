@@ -98,7 +98,7 @@ namespace Common
 
 	typedef struct MESSAGE_REQ_MOVE_STOP
 	{
-		_BYTE _Direction;
+		_BYTE _Direction; //аб / ©Л
 		unsigned short _X;
 		unsigned short _Y;
 	}req_move_stop_t;
@@ -106,7 +106,7 @@ namespace Common
 	typedef struct MESSAGE_RES_MOVE_STOP
 	{
 		int _Id;
-		_BYTE _Direction;
+		_BYTE _Direction; //аб/©Л
 		unsigned short _X;
 		unsigned short _Y;
 	}res_move_stop_t;

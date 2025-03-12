@@ -24,20 +24,22 @@ namespace NetLib
 		void CleanupSession();
 		//이동, 복사 생성자들은?
 	protected:
+		typedef int SESSION_KEY;
 		/*=======
 			TODO : RUDP
 		===========*/
 		//bool InitForUDP();
-		void SendUniCast(const int sessionKey, char* message, const size_t messageLen);
+		void SendUniCast(const SESSION_KEY sessionKey, char* message, const size_t messageLen);
 		void SendBroadCast(char* message, const size_t messageLen);
-		void SendBroadCast(int exceptSession, char* message, const size_t messageLen);
+		void SendBroadCast(SESSION_KEY exceptSession, char* message, const size_t messageLen);
 		/*========
 		* 상속받아서 게임 서버에서 컨텐츠 구현 
 		===========*/
-		virtual void OnAcceptProc(const int key) = 0; 
-		virtual void OnRecvProc(char* message, char* header, size_t hLen, int sessionkey) = 0;
+		virtual void OnAcceptProc(const SESSION_KEY key) = 0;
+		virtual void OnRecvProc(char* message, char* header, size_t hLen, SESSION_KEY sessionkey) = 0;
+		virtual void OnDestroyProc(const SESSION_KEY key) = 0;
 		/* 세션 삭제요청. */
-		void Disconnect(int sessionKey);
+		void Disconnect(SESSION_KEY sessionKey);
 		/*TODO */
 	private:
 		//세션들 

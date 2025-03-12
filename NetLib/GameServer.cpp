@@ -24,7 +24,7 @@ onAcceptProc에서 할일
 2. 다른 플레이어에게 내 플레이어 생성 메시지 보내기
 3. 기존 플레이어들 나에게 생성 메시지 보내기
 ===================================*/
-void GameServer::OnAcceptProc(const int key)
+void GameServer::OnAcceptProc(const SESSION_KEY key)
 {
 	//1. 플레이어 생성
 	int playerKey;
@@ -153,7 +153,8 @@ void GameServer::OnRecvProc(char* message, char* header, size_t hLen, SESSION_KE
 		break;
 	default:
 		//TODO : 연결 끊어야함.
-		Disconnect(key);
+		printf("BAD REQUEST!\n");
+		OnDestroyProc(key);
 		break;
 	}
 	return;
@@ -169,6 +170,11 @@ void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 
 	//범위 넘는 메시지 무시
 	if (recvX > static_cast<int>(MAX_MAP_BOUNDARY::RIGHT) || recvY > static_cast<int>(MAX_MAP_BOUNDARY::BOTTOM))
+	{
+		return;
+	}
+	//이상한 방향 무시
+	if (action < static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION) || action > static_cast<int>(MOVE_DIRECTION::LEFT_BOTTOM))
 	{
 		return;
 	}
@@ -193,8 +199,7 @@ void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 		player->SetDirection(static_cast<char>(CHARCTER_DIRECTION_2D::LEFT));
 		break;
 	default:
-		//이상한 방향 무시
-		return;
+		break;
 	}
 
 	//나 빼고 다 보내기
@@ -207,10 +212,10 @@ void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_MOVE_START));
 
-	printf("============================================================\n");
+	/*printf("============================================================\n");
 	printf("MOVE START MESSAGE\n");
 	printf("PLAYER ID : %d | SESSION ID : %d | PARAMETER KEY : %d |CUR_X : %hd  | CUR_Y : %hd |\n", player->GetPlayerId(), player->GetSessionId(), key, player->GetX(), player->GetY());
-	printf("============================================================\n");
+	printf("============================================================\n");*/
 	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_MOVE_START) + sizeof(MESSAGE_HEADER));
 }
 
@@ -231,10 +236,13 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 	short playerX = player->GetX();
 	short playerY = player->GetY();
 
+
 	if (abs(recvX - playerX) > static_cast<int>(MAX_MAP_BOUNDARY::MAX_ERROR_BOUNDARY) ||
 		abs(recvY - playerY) > static_cast<int>(MAX_MAP_BOUNDARY::MAX_ERROR_BOUNDARY))
 	{
-		Disconnect(key);
+		printf("CURRENT X : %hd | CURRENT Y : %hd \n", playerX, playerY);
+		printf("OUT OF BOUNDARY DISCONNECT!\n");
+		OnDestroyProc(key);
 		return;
 	}
 
@@ -255,6 +263,7 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 
 	printf("MOVE STOP MESSAGE\n");
 	printf("PLAYER ID : %d | SESSION ID : %d | PARAM KEY : %d |CUR_X : %hd  | CUR_Y : %hd |\n", player->GetPlayerId(), player->GetSessionId(), key, player->GetX(), player->GetY());
+	
 	//무브스탑 메시지 생성 후 보내기
 	MESSAGE_RES_MOVE_STOP sendMsg;
 	MESSAGE_HEADER header;
@@ -264,7 +273,7 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 
 	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_MOVE_STOP));
-	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_MOVE_STOP));
+	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_MOVE_STOP) + sizeof(MESSAGE_HEADER));
 
 	return;
 }
@@ -286,8 +295,8 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 	int playerKey = _keys.find(key)->second;
 	Player* attacker = _Players.find(playerKey)->second;
 
-	int myX = attacker->GetX();
-	int myY = attacker->GetY();
+	short myX = attacker->GetX();
+	short myY = attacker->GetY();
 
 	MESSAGE_HEADER header;
 	MESSAGE_RES_ATTACK_LEFT_HAND sendMsg;
@@ -441,8 +450,8 @@ void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
 	int playerKey = _keys.find(key)->second;
 	Player* attacker = _Players.find(playerKey)->second;
 
-	int myX = attacker->GetX();
-	int myY = attacker->GetY();
+	short myX = attacker->GetX();
+	short myY = attacker->GetY();
 
 	MESSAGE_HEADER header;
 	MESSAGE_RES_ATTACK_KICK sendMsg;
@@ -531,12 +540,30 @@ bool GameServer::CheckDirection(char direction)
 }
 
 
-void GameServer::ProcessPlayerDeath(Player* player)
+void GameServer::OnDestroyProc(const SESSION_KEY key)
 {
+	const auto& iter = _keys.find(key);
+	//유효하지 않은 세션키?
+	if (iter == _keys.end())
+	{
+		return;
+	}
+	PLAYER_KEY playerKey = iter->second;
+	//유효하지 않은 플레이어키?
+	const auto& iter2 = _Players.find(playerKey);
+	if (iter2 == _Players.end())
+	{
+		return;
+	}
+	Player* DeathPlayer = iter2->second;
+
 	MESSAGE_HEADER header;
 	MESSAGE_RES_DELETE_CHARACTER sendMsg;
-	int seesionKey = player->GetSessionId();
-	int playerKey = player->GetPlayerId();
+
+	printf("============================================================\n");
+	printf("DELETE CHARACTER MESSAGE\n");
+	printf("PLAYER ID : %d \n", playerKey);
+	printf("============================================================\n");
 
 	char buffer[32] = { 0, };
 	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DELETE_CHARACTER), static_cast<char>(MESSAGE_DEFINE::RES_DELETE_CHARACTER), header);
@@ -544,12 +571,12 @@ void GameServer::ProcessPlayerDeath(Player* player)
 
 	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_DELETE_CHARACTER));
+	SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_DELETE_CHARACTER));
 
-	SendBroadCast(seesionKey, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_DELETE_CHARACTER));
-
-	Disconnect(seesionKey);
+	Disconnect(key);
 	MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
-	pool.deAllocate(player);
+	pool.deAllocate(DeathPlayer);
+	_Players.erase(playerKey);
 }
 //프레임 로직 
 void GameServer::update()
@@ -566,20 +593,19 @@ void GameServer::update()
 		Sleep(sleepTime);
 	}
 
+	//프레임마다 움직이기.
 	for (auto& player : _Players)
 	{
 		Player* cur = player.second;
-		//FOR DEBUG
-		/*printf("============================================================\n");
-		printf("PLAYER X : %d | PLAYER Y : %d \n", cur->GetX(), cur->GetY());
-		printf("============================================================\n");*/
-		//플레이어가 죽었다면,
-		if (cur->GetHp() < 0)
+		if (cur->GetHp() <= 0)
 		{
-			ProcessPlayerDeath(cur);
-			_Players.erase(player.first);
+			printf("PLAYER DIE DISCONNECT!\n");
+			OnDestroyProc(cur->GetSessionId());
 			continue;
 		}
+
+		int prevX = cur->GetX();
+		int prevY = cur->GetY();
 
 		int action = cur->GetAction();
 		switch (action)
@@ -609,12 +635,17 @@ void GameServer::update()
 			cur->Move(-(static_cast<short>(PLAYER_MOVE_SPEED::X_SPEED)), static_cast<short>(PLAYER_MOVE_SPEED::Y_SPEED));
 			break;
 		default:
-			//가만히 있거나, 이상한 입력이 왔을 때 무시.
 			break;
 		}
-
+		//FOR DEBUG
+		int nextX = cur->GetX();
+		int nextY = cur->GetY();
+		if (prevX == nextX && prevY == nextY)
+		{
+			continue;
+		}
+		printf("PLAYER X : %d  |  PLAYER Y : %d \n", nextX, nextY);
 	}
 
 
-	//프레임마다 움직이기.
 }

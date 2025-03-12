@@ -148,9 +148,9 @@ void NetWorkLib::Process()
 			curSession = SesionStart_iter->second;
 			if (FD_ISSET(curSession->GetSocket(), &readSet))
 			{
-				printf("============================================================\n");
-				printf("SESSION Key : %d | In Network Code | COUNT : %d|\n", curSession->GetSessionKey(), g_count);
-				printf("============================================================\n");
+				//printf("============================================================\n");
+				//printf("SESSION Key : %d | In Network Code | COUNT : %d|\n", curSession->GetSessionKey(), g_count);
+				//printf("============================================================\n");
 				_RecvProc(curSession);
 			}
 
@@ -171,7 +171,6 @@ void NetWorkLib::Process()
 
 void NetWorkLib::_RecvProc(Session* session)
 {
-	//해당 세션의 RingBuffer 수신버퍼의 주소를 그냥 박음.(Rear의 주소를 줘야겠지)
 	int recvLen;
 	int errorCode;
 
@@ -186,12 +185,14 @@ void NetWorkLib::_RecvProc(Session* session)
 			|| errorCode == WSAECONNABORTED
 			|| errorCode == WSAECONNRESET)
 		{
+			printf("RECV ERROR NORMAL DISCONNECT!\n");
+			OnDestroyProc(session->GetSessionKey());
 			return;
 		}
-
 		//다른 에러가 기록되는 경우
 		Logger::Logging(errorCode, __LINE__, L"Recv Error");
-		session->SetDisconnect();
+		printf("RECV ERROR UNUSAL DISCONNECT!\n");
+		OnDestroyProc(session->GetSessionKey());
 		return;
 	}
 	pRecvQ->MoveRear(recvLen);
@@ -199,7 +200,6 @@ void NetWorkLib::_RecvProc(Session* session)
 	// 한번 받은 메시지는 모두 처리한다.
 	while (true)
 	{	//TODO : 이 부분은 컨텐츠와 결합되버림. 추후 변경
-		//왜냐하면, Player측에서 매번 Session에게, RecvBuffer나 SendBuffer를 확인해가면서 header를 체크하는게 좀 비효율적이라 생각함. 
 		int peekMessageLen;
 		int payLoadLen;
 
@@ -276,18 +276,21 @@ void NetWorkLib::_SendProc(Session* session)
 		// send시 WOULDBLOCK는 L4의 송신버퍼가 꽉찼다는거다. 이건 상대방의 수신이 다 찼다는거임. 
 		// 나머지 에러들은 연결이 끊겼거나.. 등에는 그냥 끊어주면 됨.
 		// 안끊어줘야할 사유가 있나?
-		session->SetDisconnect();
+		//session->SetDisconnect();
+		printf("L7 BUFFER IS FULL DISCONNECT!\n");
+		OnDestroyProc(session->GetSessionKey());
 		return;
 	}
 	if (sendLen < sendQLen)
 	{
-		session->SetDisconnect();
+		printf("L7 BUFFER IS FULL DISCONNECT!\n");
+		OnDestroyProc(session->GetSessionKey());
 		return;
 	}
 	pSendQueue->MoveFront(sendLen);
 }
 
-void NetWorkLib::SendUniCast(const int sessionKey, char* message, const size_t messageLen)
+void NetWorkLib::SendUniCast(const SESSION_KEY sessionKey, char* message, const size_t messageLen)
 {
 	int enqueueLen;
 	const auto& iter = _Sessions.find(sessionKey);
@@ -304,8 +307,9 @@ void NetWorkLib::SendUniCast(const int sessionKey, char* message, const size_t m
 
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
+			printf("L7 BUFFER IS FULL DISCONNECT!\n");
 			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
-			findSession->SetDisconnect();
+			OnDestroyProc(findSession->GetSessionKey());
 			return;
 		}
 	}
@@ -327,14 +331,15 @@ void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
 		enqueueLen = curSendQ->Enqueue(message, messageLen);
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
+			printf("L7 BUFFER IS FULL DISCONNECT!\n");
 			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
-			cur->SetDisconnect();
+			OnDestroyProc(cur->GetSessionKey());
 			continue;
 		}
 	}
 }
 
-void NetWorkLib::SendBroadCast(int exceptSession, char* message, const size_t messageLen)
+void NetWorkLib::SendBroadCast(SESSION_KEY exceptSession, char* message, const size_t messageLen)
 {
 	int enqueueLen;
 	for (auto& session : _Sessions)
@@ -355,14 +360,15 @@ void NetWorkLib::SendBroadCast(int exceptSession, char* message, const size_t me
 		enqueueLen = curSendQ->Enqueue(message, messageLen);
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
+			printf("L7 BUFFER IS FULL DISCONNECT!\n");
 			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
-			cur->SetDisconnect();
+			OnDestroyProc(cur->GetSessionKey());
 			continue;
 		}
 	}
 }
 
-void NetWorkLib::Disconnect(int sessionKey)
+void NetWorkLib::Disconnect(SESSION_KEY sessionKey)
 {
 	//서버로 부터 이상한 세션키가 온다면? 세션 키도 관리대상인가?
 	const auto& iter = _Sessions.find(sessionKey);
@@ -377,16 +383,16 @@ void NetWorkLib::Disconnect(int sessionKey)
 
 void NetWorkLib::CleanupSession()
 {
+	MemoryPool<Session, SESSION_POOL_SIZE>& pool = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance();
 	for (auto& session : _Sessions)
 	{
 		Session* cur = session.second;
 		int sessionKey = session.first;
 		if (cur->GetConnection() == false)
 		{
-			MemoryPool<Session, SESSION_POOL_SIZE>& pool = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance();
-
-			pool.deAllocate(cur);
+			closesocket(cur->GetSocket());
 			_Sessions.erase(sessionKey);
+			pool.deAllocate(cur);
 		}
 	}
 }

@@ -24,6 +24,13 @@ void Player::OnPlayerDeath()
 
 void Player::Move(const short x, const short y)
 {
+	// 하나라도 막혀있으면 못가는 로직으로 변경해야함. 
+	// 이건 MAX값만 체크한 로직임. 이럴경우 대각선으로 가면 뚫림
+	if (CheckWallCollision())
+	{
+		return;
+	}
+
 	_X += x;
 	if (_X <= static_cast<short>(MAX_MAP_BOUNDARY::LEFT))
 	{
@@ -59,4 +66,16 @@ void Player::Attacked(const int damage)
 		_Hp = 0;
 	}
 	return;
+}
+
+bool Core::Player::CheckWallCollision()
+{
+	if (_X <= static_cast<short>(MAX_MAP_BOUNDARY::LEFT)
+		|| _X >= static_cast<short>(MAX_MAP_BOUNDARY::RIGHT)
+		|| _Y <= static_cast<short>(MAX_MAP_BOUNDARY::TOP)
+		|| _Y >= static_cast<short>(MAX_MAP_BOUNDARY::BOTTOM))
+	{
+		return true;
+	}
+	return false;
 }

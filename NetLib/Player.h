@@ -18,6 +18,8 @@ namespace Core
 		void Move(const short x, const short y);
 		void Attacked(const int damage);
 
+		bool CheckWallCollision();
+
 		inline void SetX(short x)
 		{
 			_X = x;

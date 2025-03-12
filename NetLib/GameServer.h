@@ -9,10 +9,9 @@ namespace Core
 	{
 	public:
 		typedef int PLAYER_KEY;
-		typedef int SESSION_KEY;
 		GameServer();
 		virtual ~GameServer();
-		void OnAcceptProc(const int key) override;
+		void OnAcceptProc(const SESSION_KEY key) override;
 		void OnRecvProc(char* message, char* header, size_t hLen, SESSION_KEY key) override;
 
 		/*=== ÄÁÅÙÃ÷ ====*/
@@ -25,8 +24,7 @@ namespace Core
 		bool CheckAttackInRange(const short attackerX, const short attackerY, const int AttackRangeX, const int AttackRangeY, const short targetX, const short targetY, const char direction);
 		bool CheckDirection(char direction);
 
-		void ProcessPlayerDeath(Player* player);
-
+		void OnDestroyProc(const SESSION_KEY key);
 		void update();
 	private:
 		enum

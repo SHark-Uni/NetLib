@@ -152,8 +152,10 @@ void GameServer::OnRecvProc(char* message, char* header, size_t hLen, SESSION_KE
 		ReqAttackKickProc(payload, key);
 		break;
 	default:
+#ifdef GAME_DEBUG
 		//TODO : 연결 끊어야함.
 		printf("BAD REQUEST!\n");
+#endif
 		OnDestroyProc(key);
 		break;
 	}
@@ -211,11 +213,12 @@ void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 
 	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_MOVE_START));
-
-	/*printf("============================================================\n");
+#ifdef GAME_DEBUG
+	printf("============================================================\n");
 	printf("MOVE START MESSAGE\n");
 	printf("PLAYER ID : %d | SESSION ID : %d | PARAMETER KEY : %d |CUR_X : %hd  | CUR_Y : %hd |\n", player->GetPlayerId(), player->GetSessionId(), key, player->GetX(), player->GetY());
-	printf("============================================================\n");*/
+	printf("============================================================\n");
+#endif
 	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_MOVE_START) + sizeof(MESSAGE_HEADER));
 }
 
@@ -240,8 +243,10 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 	if (abs(recvX - playerX) > static_cast<int>(MAX_MAP_BOUNDARY::MAX_ERROR_BOUNDARY) ||
 		abs(recvY - playerY) > static_cast<int>(MAX_MAP_BOUNDARY::MAX_ERROR_BOUNDARY))
 	{
+#ifdef GAME_DEBUG
 		printf("CURRENT X : %hd | CURRENT Y : %hd \n", playerX, playerY);
 		printf("OUT OF BOUNDARY DISCONNECT!\n");
+#endif
 		OnDestroyProc(key);
 		return;
 	}
@@ -260,10 +265,10 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 	player->SetDirection(direction);
 	player->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
 
-
+#ifdef GAME_DEBUG
 	printf("MOVE STOP MESSAGE\n");
 	printf("PLAYER ID : %d | SESSION ID : %d | PARAM KEY : %d |CUR_X : %hd  | CUR_Y : %hd |\n", player->GetPlayerId(), player->GetSessionId(), key, player->GetX(), player->GetY());
-	
+#endif
 	//무브스탑 메시지 생성 후 보내기
 	MESSAGE_RES_MOVE_STOP sendMsg;
 	MESSAGE_HEADER header;
@@ -559,12 +564,12 @@ void GameServer::OnDestroyProc(const SESSION_KEY key)
 
 	MESSAGE_HEADER header;
 	MESSAGE_RES_DELETE_CHARACTER sendMsg;
-
+#ifdef GAME_DEBUG
 	printf("============================================================\n");
 	printf("DELETE CHARACTER MESSAGE\n");
 	printf("PLAYER ID : %d \n", playerKey);
 	printf("============================================================\n");
-
+#endif
 	char buffer[32] = { 0, };
 	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DELETE_CHARACTER), static_cast<char>(MESSAGE_DEFINE::RES_DELETE_CHARACTER), header);
 	buildMsg_deleteCharacter(playerKey, sendMsg);
@@ -582,7 +587,7 @@ void GameServer::OnDestroyProc(const SESSION_KEY key)
 void GameServer::update()
 {
 	DWORD nextTick;
-	DWORD sleepTime;
+	int sleepTime;
 
 	nextTick = timeGetTime();
 
@@ -599,14 +604,17 @@ void GameServer::update()
 		Player* cur = player.second;
 		if (cur->GetHp() <= 0)
 		{
+#ifdef GAME_DEBUG
 			printf("PLAYER DIE DISCONNECT!\n");
+#endif
 			OnDestroyProc(cur->GetSessionId());
 			continue;
 		}
+#ifdef GAME_DEBUG
 		//FOR DEBUG
 		int prevX = cur->GetX();
 		int prevY = cur->GetY();
-
+#endif
 		int action = cur->GetAction();
 		switch (action)
 		{
@@ -637,7 +645,7 @@ void GameServer::update()
 		default:
 			break;
 		}
-		//FOR DEBUG
+#ifdef GAME_DEBUG
 		int nextX = cur->GetX();
 		int nextY = cur->GetY();
 		if (prevX == nextX && prevY == nextY)
@@ -645,6 +653,7 @@ void GameServer::update()
 			continue;
 		}
 		printf("PLAYER X : %d  |  PLAYER Y : %d \n", nextX, nextY);
+#endif
 	}
 
 

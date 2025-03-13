@@ -10,7 +10,7 @@
 #include "ErrorMessage.h"
 #include "Config.h"
 #include "MemoryPool.h"
-extern int g_count;
+
 namespace NetLib
 {
 	class Session;

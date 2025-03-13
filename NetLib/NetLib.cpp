@@ -6,7 +6,6 @@
 using namespace Common;
 using namespace NetLib;
 
-int g_count = 0;
 NetWorkLib::~NetWorkLib()
 {
 	//Session들 메모리 풀로 반납. 
@@ -148,9 +147,6 @@ void NetWorkLib::Process()
 			curSession = SesionStart_iter->second;
 			if (FD_ISSET(curSession->GetSocket(), &readSet))
 			{
-				//printf("============================================================\n");
-				//printf("SESSION Key : %d | In Network Code | COUNT : %d|\n", curSession->GetSessionKey(), g_count);
-				//printf("============================================================\n");
 				_RecvProc(curSession);
 			}
 
@@ -185,13 +181,17 @@ void NetWorkLib::_RecvProc(Session* session)
 			|| errorCode == WSAECONNABORTED
 			|| errorCode == WSAECONNRESET)
 		{
+#ifdef GAME_DEBUG
 			printf("RECV ERROR NORMAL DISCONNECT!\n");
+#endif
 			OnDestroyProc(session->GetSessionKey());
 			return;
 		}
 		//다른 에러가 기록되는 경우
-		Logger::Logging(errorCode, __LINE__, L"Recv Error");
+#ifdef GAME_DEBUG
 		printf("RECV ERROR UNUSAL DISCONNECT!\n");
+#endif
+		Logger::Logging(errorCode, __LINE__, L"Recv Error");
 		OnDestroyProc(session->GetSessionKey());
 		return;
 	}
@@ -224,10 +224,12 @@ void NetWorkLib::_RecvProc(Session* session)
 		}
 		pRecvQ->Dequeue(buffer, payLoadLen + sizeof(header_t));
 		int debugKey = session->GetSessionKey();
+#ifdef GAME_DEBUG
 		printf("============================================================\n");
-		printf("SESSION Key : %d | In Network Code |  COUNT : %d | \n", debugKey, g_count);
+		printf("SESSION Key : %d | In Network | \n", debugKey);
 		printf("RECEIVE HEADER , CODE : %d | TYPE :%d | PAYLOADLEN : %d\n", header->_Code, header->_MessageType, header->_PayloadLen);
 		printf("============================================================\n");
+#endif
 		OnRecvProc(buffer, tmp, sizeof(header_t), session->GetSessionKey());
 	}
 	return;
@@ -276,14 +278,17 @@ void NetWorkLib::_SendProc(Session* session)
 		// send시 WOULDBLOCK는 L4의 송신버퍼가 꽉찼다는거다. 이건 상대방의 수신이 다 찼다는거임. 
 		// 나머지 에러들은 연결이 끊겼거나.. 등에는 그냥 끊어주면 됨.
 		// 안끊어줘야할 사유가 있나?
-		//session->SetDisconnect();
+#ifdef GAME_DEBUG
 		printf("L7 BUFFER IS FULL DISCONNECT!\n");
+#endif
 		OnDestroyProc(session->GetSessionKey());
 		return;
 	}
 	if (sendLen < sendQLen)
 	{
+#ifdef GAME_DEBUG
 		printf("L7 BUFFER IS FULL DISCONNECT!\n");
+#endif
 		OnDestroyProc(session->GetSessionKey());
 		return;
 	}
@@ -307,7 +312,9 @@ void NetWorkLib::SendUniCast(const SESSION_KEY sessionKey, char* message, const 
 
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
+#ifdef GAME_DEBUG
 			printf("L7 BUFFER IS FULL DISCONNECT!\n");
+#endif
 			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
 			OnDestroyProc(findSession->GetSessionKey());
 			return;
@@ -331,7 +338,9 @@ void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
 		enqueueLen = curSendQ->Enqueue(message, messageLen);
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
+#ifdef GAME_DEBUG
 			printf("L7 BUFFER IS FULL DISCONNECT!\n");
+#endif
 			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
 			OnDestroyProc(cur->GetSessionKey());
 			continue;
@@ -360,7 +369,9 @@ void NetWorkLib::SendBroadCast(SESSION_KEY exceptSession, char* message, const s
 		enqueueLen = curSendQ->Enqueue(message, messageLen);
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
+#ifdef GAME_DEBUG
 			printf("L7 BUFFER IS FULL DISCONNECT!\n");
+#endif
 			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
 			OnDestroyProc(cur->GetSessionKey());
 			continue;

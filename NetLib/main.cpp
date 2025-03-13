@@ -11,7 +11,6 @@ using namespace Common;
 using namespace NetLib;
 using namespace Core;
 
-extern int g_count;
 int main()
 {
 	::timeBeginPeriod(1);

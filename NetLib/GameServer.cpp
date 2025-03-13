@@ -526,7 +526,7 @@ bool GameServer::CheckAttackInRange(const short attackerX, const short attackerY
 	//LEFT
 	else
 	{
-		if (attackerX - AttackRangeX <= targetX && targetX <= attackerX && abs(attackerY - targetY) <= 10)
+		if (attackerX - AttackRangeX <= targetX && targetX <= attackerX && abs(attackerY - targetY) <= AttackRangeY)
 		{
 			return true;
 		}

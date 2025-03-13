@@ -119,7 +119,7 @@ void GameServer::OnAcceptProc(const SESSION_KEY key)
 				static_cast<char>(MESSAGE_DEFINE::RES_MOVE_START),
 				header
 			);
-			buildMsg_move_start(curId, curDir, curX, curY, moveMsg);
+			buildMsg_move_start(curId, curAction, curX, curY, moveMsg);
 			memcpy(buffer, &header, sizeof(header_t));
 			memcpy(buffer + sizeof(header_t), &moveMsg, sizeof(MESSAGE_RES_MOVE_START));
 
@@ -603,7 +603,7 @@ void GameServer::update()
 			OnDestroyProc(cur->GetSessionId());
 			continue;
 		}
-
+		//FOR DEBUG
 		int prevX = cur->GetX();
 		int prevY = cur->GetY();
 

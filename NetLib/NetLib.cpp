@@ -178,6 +178,7 @@ void NetWorkLib::_RecvProc(Session* session)
 	{
 		errorCode = ::WSAGetLastError();
 		if (errorCode == WSAEWOULDBLOCK
+			|| recvLen == 0
 			|| errorCode == WSAECONNABORTED
 			|| errorCode == WSAECONNRESET)
 		{

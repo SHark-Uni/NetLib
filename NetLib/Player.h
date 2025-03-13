@@ -2,19 +2,21 @@
 
 namespace Core
 {
-
-
 	class Player
 	{
 	public:
 		void Init(const int playerId, const int sessionId);
 		void OnPlayerDeath();
 
-		static int generatePlayerId()
+		int generatePlayerId()
 		{
 			static int playerId = 0;
 			return playerId++;
 		}
+
+		int generateSpawnX() const;
+		int generateSpawnY() const;
+
 		void Move(const short x, const short y);
 		void Attacked(const int damage);
 

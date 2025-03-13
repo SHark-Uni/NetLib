@@ -13,7 +13,7 @@ namespace Core
 		virtual ~GameServer();
 		void OnAcceptProc(const SESSION_KEY key) override;
 		void OnRecvProc(char* message, char* header, size_t hLen, SESSION_KEY key) override;
-
+		void OnDestroyProc(const SESSION_KEY key) override; 
 		/*=== ÄÁÅÙÃ÷ ====*/
 		void ReqMoveStartProc(char* message, const SESSION_KEY key);
 		void ReqMoveStopProc(char* message, const SESSION_KEY key);
@@ -24,7 +24,7 @@ namespace Core
 		bool CheckAttackInRange(const short attackerX, const short attackerY, const int AttackRangeX, const int AttackRangeY, const short targetX, const short targetY, const char direction);
 		bool CheckDirection(char direction);
 
-		void OnDestroyProc(const SESSION_KEY key);
+
 		void update();
 	private:
 		enum

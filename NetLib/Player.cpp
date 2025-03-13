@@ -1,6 +1,8 @@
 #include "Player.h"
 #include "PlayerDefine.h"
 
+#include <stdlib.h>
+
 using namespace Core;
 
 void Player::Init(const int playerId, const int sessionId)
@@ -11,17 +13,21 @@ void Player::Init(const int playerId, const int sessionId)
 	_Action = static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION);
 	_Direction = static_cast<int>(PLAYER_DEFAULT::DEFAULT_DIR);
 
-	_X = static_cast<int>(PLAYER_DEFAULT::SPAWN_X);
-	_Y = static_cast<int>(PLAYER_DEFAULT::SPAWN_Y);
+	_X = generateSpawnX();
+	_Y = generateSpawnY();
 
 	_Hp = static_cast<int>(PLAYER_DEFAULT::PLAYER_HP);
 }
 
-void Player::OnPlayerDeath()
+int Player::generateSpawnY() const
 {
-	/*만약에 죽는효과가 있다면 여기다 구현*/
+	return (rand() % (static_cast<int>(MAX_MAP_BOUNDARY::BOTTOM) - static_cast<int>(MAX_MAP_BOUNDARY::TOP)) + static_cast<int>(MAX_MAP_BOUNDARY::TOP));
 }
 
+int Player::generateSpawnX() const
+{
+	return (rand() % (static_cast<int>(MAX_MAP_BOUNDARY::RIGHT) - static_cast<int>(MAX_MAP_BOUNDARY::LEFT)) + static_cast<int>(MAX_MAP_BOUNDARY::LEFT));
+}
 void Player::Move(const short x, const short y)
 {
 	// 하나라도 막혀있으면 못가는 로직으로 변경해야함. 

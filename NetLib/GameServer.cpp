@@ -603,7 +603,7 @@ void GameServer::update()
 			OnDestroyProc(cur->GetSessionId());
 			continue;
 		}
-
+		//FOR DEBUG
 		int prevX = cur->GetX();
 		int prevY = cur->GetY();
 

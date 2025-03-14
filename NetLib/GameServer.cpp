@@ -558,18 +558,6 @@ void GameServer::cleanUpPlayer()
 //프레임 로직 
 void GameServer::update()
 {
-	DWORD nextTick;
-	int sleepTime;
-
-	nextTick = timeGetTime();
-
-	nextTick += TIME_PER_FRAME;
-	sleepTime = nextTick - timeGetTime();
-	if (sleepTime > 0)
-	{
-		Sleep(sleepTime);
-	}
-
 	//프레임마다 움직이기.
 	for (auto& player : _Players)
 	{

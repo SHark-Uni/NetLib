@@ -280,7 +280,7 @@ void NetWorkLib::_SendProc(Session* session)
 		// 나머지 에러들은 연결이 끊겼거나.. 등에는 그냥 끊어주면 됨.
 		// 안끊어줘야할 사유가 있나?
 #ifdef GAME_DEBUG
-		printf("L7 BUFFER IS FULL DISCONNECT!\n");
+		printf("SEND ERROR\n");
 #endif
 		OnDestroyProc(session->GetSessionKey());
 		return;

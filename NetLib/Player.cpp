@@ -12,6 +12,7 @@ void Player::Init(const int playerId, const int sessionId)
 
 	_Action = static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION);
 	_Direction = static_cast<int>(PLAYER_DEFAULT::DEFAULT_DIR);
+	_IsAlive = true;
 
 	_X = generateSpawnX();
 	_Y = generateSpawnY();
@@ -47,14 +48,13 @@ void Player::Move(const short x, const short y)
 	return;
 }
 
-
-
 void Player::Attacked(const int damage)
 {
 	//양수로 음수로 데미지 받는 회복같은 개념은 없음. 양의 극값은 검사 ㄴ
 	_Hp -= damage;
 	if (_Hp <= 0)
 	{
+		_IsAlive = false;
 		_Hp = 0;
 	}
 	return;

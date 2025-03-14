@@ -15,7 +15,7 @@ void Logger::Logging(int errorCode, int line, const WCHAR* cause)
 	FILE* fp;
 
 	WCHAR FILENAME[128] = { 0 , };
-	WCHAR ErrorMessage[128] = { 0 , };
+	WCHAR ErrorMessage[256] = { 0 , };
 
 	swprintf_s(FILENAME, 128, L"Logger_%dy_%dm_%d day_%dh%dm.txt",
 		t.tm_year + 1900,
@@ -31,7 +31,7 @@ void Logger::Logging(int errorCode, int line, const WCHAR* cause)
 	}
 	fputwc(0xFEFF, fp);
 
-	swprintf_s(ErrorMessage, 128, L"Why : %s | ErrorCode : %d | Line : %d \n",
+	swprintf_s(ErrorMessage, 256, L"Why : %s | ErrorCode : %d | Line : %d \n",
 		cause,
 		errorCode,
 		line);
@@ -66,7 +66,7 @@ void Logger::LoggingWithIP(int errorCode, int line, const WCHAR* cause, const WC
 	}
 	fputwc(0xFEFF, fp);
 
-	swprintf_s(ErrorMessage, 128, L"ip : %s | Why : %s | ErrorCode : %d | Line : %d \n",
+	swprintf_s(ErrorMessage, 256, L"ip : %s | Why : %s | ErrorCode : %d | Line : %d \n",
 		ip,
 		cause,
 		errorCode,

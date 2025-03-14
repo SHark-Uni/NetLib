@@ -1,4 +1,5 @@
 #pragma once
+#define GAME_DEBUG (1)
 namespace Core
 {
 	enum class CHARCTER_DIRECTION_2D

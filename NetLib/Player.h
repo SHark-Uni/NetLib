@@ -6,8 +6,6 @@ namespace Core
 	{
 	public:
 		void Init(const int playerId, const int sessionId);
-		void OnPlayerDeath();
-
 		int generatePlayerId()
 		{
 			static int playerId = 0;
@@ -17,6 +15,14 @@ namespace Core
 		int generateSpawnX() const;
 		int generateSpawnY() const;
 
+		inline bool IsAlive() const
+		{
+			return _IsAlive;
+		}
+		inline void SetPlayerDeath()
+		{
+			_IsAlive = false;
+		}
 		void Move(const short x, const short y);
 		void Attacked(const int damage);
 
@@ -73,6 +79,7 @@ namespace Core
 		
 		int _Action;
 		char _Direction;
+		char _IsAlive;
 
 		short _X;
 		short _Y;

@@ -4,7 +4,10 @@
 #include "MemoryPool.h"
 #include "Player.h"
 #include "PlayerDefine.h"
+#include "Logger.h"
 
+
+#include <cassert>
 using namespace Core;
 using namespace Common;
 
@@ -161,7 +164,6 @@ void GameServer::OnRecvProc(char* message, char* header, size_t hLen, SESSION_KE
 	}
 	return;
 }
-
 /* 컨텐츠 구현 하기! 예외 케이스들 생각해보자.*/
 void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 {
@@ -246,7 +248,10 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 #ifdef GAME_DEBUG
 		printf("CURRENT X : %hd | CURRENT Y : %hd \n", playerX, playerY);
 		printf("OUT OF BOUNDARY DISCONNECT!\n");
+		WCHAR buffer[80] = { 0, };
+		swprintf_s(buffer, L"PLAYER X : %hd | PLAYER Y : %hd | RECV X : %hd | RECV Y : %hd\n", playerX, playerY, recvX, recvY);
 #endif
+		Logger::Logging(-2, __LINE__, buffer);
 		OnDestroyProc(key);
 		return;
 	}
@@ -299,6 +304,7 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 	//내 캐릭터 정보 찾기
 	int playerKey = _keys.find(key)->second;
 	Player* attacker = _Players.find(playerKey)->second;
+	//TODO : attacker가 nullptr이 뜬다.
 
 	short myX = attacker->GetX();
 	short myY = attacker->GetY();
@@ -314,21 +320,6 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND));
 
 	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND) + sizeof(MESSAGE_HEADER));
-
-	//움직이고 있었다면, 멈추는 Message 전송 
-	MESSAGE_RES_MOVE_STOP moveStopMsg;
-	if (attacker->GetAction() != static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION))
-	{
-		attacker->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
-
-		buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), sizeof(MESSAGE_RES_MOVE_STOP), header);
-		buildMsg_move_stop(playerKey, attacker->GetDirection(), myX, myY, moveStopMsg);
-		memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-		memcpy(buffer + sizeof(MESSAGE_HEADER), &moveStopMsg, sizeof(MESSAGE_RES_MOVE_STOP));
-
-		//클라는 자기가 알아서 멈출거임. 
-		SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_MOVE_STOP));
-	}
 
 	//공격범위 판정
 	MESSAGE_RES_DAMAGE damageSendMsg;
@@ -377,8 +368,8 @@ void GameServer::ReqAttackRightHandProc(char* message, const SESSION_KEY key)
 	int playerKey = _keys.find(key)->second;
 	Player* attacker = _Players.find(playerKey)->second;
 
-	int myX = attacker->GetX();
-	int myY = attacker->GetY();
+	short myX = attacker->GetX();
+	short myY = attacker->GetY();
 
 	MESSAGE_HEADER header;
 	MESSAGE_RES_ATTACK_RIGHT_HAND sendMsg;
@@ -391,21 +382,6 @@ void GameServer::ReqAttackRightHandProc(char* message, const SESSION_KEY key)
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND));
 
 	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND) + sizeof(MESSAGE_HEADER));
-
-	//움직이고 있었다면, 멈추는 Message 전송 
-	MESSAGE_RES_MOVE_STOP moveStopMsg;
-	if (attacker->GetAction() != static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION))
-	{
-		attacker->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
-
-		buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), sizeof(MESSAGE_RES_MOVE_STOP), header);
-		buildMsg_move_stop(playerKey, attacker->GetDirection(), myX, myY, moveStopMsg);
-		memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-		memcpy(buffer + sizeof(MESSAGE_HEADER), &moveStopMsg, sizeof(MESSAGE_RES_MOVE_STOP));
-
-		//클라는 자기가 알아서 멈출거임. 
-		SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_MOVE_STOP));
-	}
 
 	//공격범위 판정
 	MESSAGE_RES_DAMAGE damageSendMsg;
@@ -454,7 +430,7 @@ void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
 	//내 캐릭터 정보 찾기
 	int playerKey = _keys.find(key)->second;
 	Player* attacker = _Players.find(playerKey)->second;
-
+	
 	short myX = attacker->GetX();
 	short myY = attacker->GetY();
 
@@ -469,27 +445,11 @@ void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_KICK));
 	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_KICK) + sizeof(MESSAGE_HEADER));
 
-	//움직이고 있었다면, 멈추는 Message 전송 
-	MESSAGE_RES_MOVE_STOP moveStopMsg;
-	if (attacker->GetAction() != static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION))
-	{
-		attacker->SetAction(static_cast<int>(PLAYER_DEFAULT::DEFAULT_ACTION));
-
-		buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), sizeof(MESSAGE_RES_MOVE_STOP), header);
-		buildMsg_move_stop(playerKey, attacker->GetDirection(), myX, myY, moveStopMsg);
-		memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-		memcpy(buffer + sizeof(MESSAGE_HEADER), &moveStopMsg, sizeof(MESSAGE_RES_MOVE_STOP));
-
-		//클라는 자기가 알아서 멈출거임. 
-		SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_MOVE_STOP));
-	}
-
 	//공격범위 판정
 	MESSAGE_RES_DAMAGE damageSendMsg;
 	for (auto& player : _Players)
 	{
 		Player* target = player.second;
-		//내가 내 자신을 때리면 안됨.
 		if (target->GetPlayerId() == playerKey)
 		{
 			continue;
@@ -518,7 +478,7 @@ bool GameServer::CheckAttackInRange(const short attackerX, const short attackerY
 {
 	if (direction == static_cast<int>(CHARCTER_DIRECTION_2D::RIGHT))
 	{
-		if (attackerX <= targetX && targetX <= (attackerX + AttackRangeX) && abs(attackerY - targetY) <= AttackRangeY)
+		if (attackerX < targetX && targetX <= (attackerX + AttackRangeX) && abs(attackerY - targetY) <= AttackRangeY)
 		{
 			return true;
 		}
@@ -526,7 +486,7 @@ bool GameServer::CheckAttackInRange(const short attackerX, const short attackerY
 	//LEFT
 	else
 	{
-		if (attackerX - AttackRangeX <= targetX && targetX <= attackerX && abs(attackerY - targetY) <= AttackRangeY)
+		if (attackerX - AttackRangeX < targetX && targetX <= attackerX && abs(attackerY - targetY) <= AttackRangeY)
 		{
 			return true;
 		}
@@ -548,18 +508,10 @@ bool GameServer::CheckDirection(char direction)
 void GameServer::OnDestroyProc(const SESSION_KEY key)
 {
 	const auto& iter = _keys.find(key);
-	//유효하지 않은 세션키?
-	if (iter == _keys.end())
-	{
-		return;
-	}
 	PLAYER_KEY playerKey = iter->second;
+
 	//유효하지 않은 플레이어키?
 	const auto& iter2 = _Players.find(playerKey);
-	if (iter2 == _Players.end())
-	{
-		return;
-	}
 	Player* DeathPlayer = iter2->second;
 
 	MESSAGE_HEADER header;
@@ -579,9 +531,29 @@ void GameServer::OnDestroyProc(const SESSION_KEY key)
 	SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_DELETE_CHARACTER));
 
 	Disconnect(key);
-	MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
-	pool.deAllocate(DeathPlayer);
-	_Players.erase(playerKey);
+	DeathPlayer->SetPlayerDeath();
+}
+
+void GameServer::cleanUpPlayer()
+{
+	auto iter = _Players.begin();
+	auto iter_e = _Players.end();
+
+	for (; iter != iter_e; )
+	{
+		Player* cur = iter->second;
+		int key = iter->first;
+
+		if (cur->IsAlive() == false)
+		{
+			MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
+			pool.deAllocate(cur);
+			_keys.erase(cur->GetSessionId());
+			iter = _Players.erase(iter);
+			continue;
+		}
+		++iter;
+	}
 }
 //프레임 로직 
 void GameServer::update()
@@ -606,8 +578,8 @@ void GameServer::update()
 		{
 #ifdef GAME_DEBUG
 			printf("PLAYER DIE DISCONNECT!\n");
-#endif
-			OnDestroyProc(cur->GetSessionId());
+#endif		
+			//OnDestroyProc(cur->GetSessionId());
 			continue;
 		}
 #ifdef GAME_DEBUG

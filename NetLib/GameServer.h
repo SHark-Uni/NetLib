@@ -24,7 +24,7 @@ namespace Core
 		bool CheckAttackInRange(const short attackerX, const short attackerY, const int AttackRangeX, const int AttackRangeY, const short targetX, const short targetY, const char direction);
 		bool CheckDirection(char direction);
 
-
+		void cleanUpPlayer();
 		void update();
 	private:
 		enum

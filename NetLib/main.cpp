@@ -1,7 +1,7 @@
 ﻿#pragma comment(lib, "winmm")
 #define _WINSOCKAPI_
-#include <iostream>
 
+#include <iostream>
 #include "MemoryPool.h"
 #include "NetLib.h"
 #include "Session.h"
@@ -25,6 +25,8 @@ int main()
 		gameServer->Process();
 		//프레임 로직
 		gameServer->update();
+
+		gameServer->cleanUpPlayer();
 		gameServer->CleanupSession();
 	}
 	return 0;

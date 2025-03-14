@@ -403,8 +403,8 @@ void NetWorkLib::CleanupSession()
 		if (cur->GetConnection() == false)
 		{
 			closesocket(cur->GetSocket());
-			_Sessions.erase(sessionKey);
 			pool.deAllocate(cur);
+			_Sessions.erase(sessionKey);
 		}
 	}
 }

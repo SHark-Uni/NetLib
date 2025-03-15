@@ -1,8 +1,9 @@
 #pragma once
+#include <utility>
 
 namespace Common
 {
-	// objectpool 
+	//objectpool 
 	template<typename T, size_t BucketCount = 256>
 	class ObjectPool
 	{
@@ -46,6 +47,20 @@ namespace Common
 			ret = &_CurSlot->_Data;
 			_CurSlot++;
 			return ret;
+		}
+
+		template<class... Args>
+		T* allocate_constructor(Args&&... args)
+		{
+			T* elemnt = allocate();
+			new (element) T(std::forward<Args>(args)...);
+			return element;
+		}
+
+		void deAllocate_destructor(T* pMemory)
+		{
+			pMemory->~T();
+			deAllocate(pMemory);
 		}
 
 		void deAllocate(T* addr)

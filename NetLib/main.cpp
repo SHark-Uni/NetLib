@@ -14,13 +14,14 @@ using namespace Core;
 int main()
 {
 	::timeBeginPeriod(1);
+	DWORD nextTick;
+	int sleepTime;
+
 	GameServer* gameServer = new GameServer();
 	if (gameServer->Init() != eERROR_MESSAGE::SUCCESS)
 	{
 		return 0;
 	}
-	DWORD nextTick;
-	int sleepTime;
 
 	nextTick = timeGetTime();
 	while (true)
@@ -38,7 +39,9 @@ int main()
 		{
 			Sleep(sleepTime);
 		}
-		//TODO : 프레임이 떨어진다면, fixed update 방식 근데, 
+		// delayed 타임을 계산해서, delay된 타임이 1프레임이 넘어간다면 update로  따라가기.
+		// 이게 동접자가 많아졌을 때는 ...큰 의미가 없음.
+		
 	}
 	return 0;
 }

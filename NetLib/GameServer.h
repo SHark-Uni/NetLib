@@ -31,7 +31,8 @@ namespace Core
 		{
 			PLAYER_POOL_SIZE = 4096,
 		};
-		std::unordered_map<PLAYER_KEY, Player*> _Players;
 		std::unordered_map<SESSION_KEY, PLAYER_KEY> _keys;
+		std::unordered_map<PLAYER_KEY, Player*> _Players;
+
 	};
 }

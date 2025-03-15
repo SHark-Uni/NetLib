@@ -546,9 +546,9 @@ void GameServer::cleanUpPlayer()
 
 		if (cur->IsAlive() == false)
 		{
+			_keys.erase(cur->GetSessionId());
 			MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
 			pool.deAllocate(cur);
-			_keys.erase(cur->GetSessionId());
 			iter = _Players.erase(iter);
 			continue;
 		}
@@ -567,7 +567,7 @@ void GameServer::update()
 #ifdef GAME_DEBUG
 			printf("PLAYER DIE DISCONNECT!\n");
 #endif		
-			//OnDestroyProc(cur->GetSessionId());
+			OnDestroyProc(cur->GetSessionId());
 			continue;
 		}
 #ifdef GAME_DEBUG
@@ -612,7 +612,7 @@ void GameServer::update()
 		{
 			continue;
 		}
-		printf("PLAYER X : %d  |  PLAYER Y : %d \n", nextX, nextY);
+		printf("PLAYER ID : %d | PLAYER X : %hd  |  PLAYER Y : %hd \n", cur->GetPlayerId(), nextX, nextY);
 #endif
 	}
 

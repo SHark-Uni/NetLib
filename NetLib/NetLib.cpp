@@ -396,16 +396,22 @@ void NetWorkLib::Disconnect(SESSION_KEY sessionKey)
 void NetWorkLib::CleanupSession()
 {
 	MemoryPool<Session, SESSION_POOL_SIZE>& pool = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance();
-	for (auto& session : _Sessions)
+
+	auto iter = _Sessions.begin();
+	auto iter_e = _Sessions.end();
+
+	for (; iter != iter_e; )
 	{
-		Session* cur = session.second;
-		int sessionKey = session.first;
+		Session* cur = iter->second;
+		int sessionKey = iter->first;
 		if (cur->GetConnection() == false)
 		{
 			closesocket(cur->GetSocket());
 			pool.deAllocate(cur);
-			_Sessions.erase(sessionKey);
+			iter = _Sessions.erase(iter);
+			continue;
 		}
+		++iter;
 	}
 }
 

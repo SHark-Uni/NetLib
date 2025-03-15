@@ -79,7 +79,7 @@ namespace Core
 		
 		int _Action;
 		char _Direction;
-		char _IsAlive;
+		bool _IsAlive;
 
 		short _X;
 		short _Y;

@@ -45,7 +45,7 @@ namespace NetLib
 		/*TODO */
 	private:
 		//¼¼¼Çµé 
-		std::unordered_map<int, Session*> _Sessions;
+		std::unordered_map<SESSION_KEY, Session*> _Sessions;
 		SOCKET _ListenSocket;
 		enum
 		{

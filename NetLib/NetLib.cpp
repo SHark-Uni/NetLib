@@ -330,13 +330,12 @@ void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
 	int enqueueLen;
 	for (auto& session : _Sessions)
 	{
-		Session* cur = session.second;
-		if (cur->GetConnection() == false)
+		if (session.second->GetConnection() == false)
 		{
 			continue;
 		}
 
-		CircularQueue* const curSendQ = cur->_pSendQueue;
+		CircularQueue* const curSendQ = session.second->_pSendQueue;
 		enqueueLen = curSendQ->Enqueue(message, messageLen);
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
@@ -344,7 +343,7 @@ void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
 			printf("L7 BUFFER IS FULL DISCONNECT!\n");
 #endif
 			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
-			OnDestroyProc(cur->GetSessionKey());
+			OnDestroyProc(session.second->GetSessionKey());
 			continue;
 		}
 	}
@@ -355,27 +354,25 @@ void NetWorkLib::SendBroadCast(SESSION_KEY exceptSession, char* message, const s
 	int enqueueLen;
 	for (auto& session : _Sessions)
 	{
-		int curkey = session.first;
-		Session* cur = session.second;
-
-		if (cur->GetConnection() == false)
+		if (session.second->GetConnection() == false)
 		{
 			continue;
 		}
-		if (curkey == exceptSession)
+		if (session.first == exceptSession)
 		{
 			continue;
 		}
 
-		CircularQueue* const curSendQ = cur->_pSendQueue;
+		CircularQueue* const curSendQ = session.second->_pSendQueue;
 		enqueueLen = curSendQ->Enqueue(message, messageLen);
+
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
 #ifdef GAME_DEBUG
 			printf("L7 BUFFER IS FULL DISCONNECT!\n");
 #endif
 			Logger::Logging(-1, __LINE__, L"L7 Buffer is FULL");
-			OnDestroyProc(cur->GetSessionKey());
+			OnDestroyProc(session.second->GetSessionKey());
 			continue;
 		}
 	}
@@ -397,8 +394,8 @@ void NetWorkLib::Disconnect(SESSION_KEY sessionKey)
 void NetWorkLib::CleanupSession()
 {
 	auto& pool = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance();
-
 	auto& ringbufferPool = ObjectPool<CircularQueue, Session::POOL_SIZE>::getInstance();
+
 	auto iter = _Sessions.begin();
 	auto iter_e = _Sessions.end();
 

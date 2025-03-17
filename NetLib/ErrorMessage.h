@@ -4,7 +4,6 @@ namespace Common
 {
 	enum class eERROR_MESSAGE
 	{
-		
 		WSA_START_FAIL,
 		MAKE_SOCKET_FAIL,
 		SET_SOCKET_NONBLOCKING_FAIL,
@@ -14,8 +13,8 @@ namespace Common
 		SET_LISTEN_FAIL,
 		SELECT_FAIL,
 
-
 		ERROR_MESSAGE_CNT,
+
 		SUCCESS,
 	};
 }

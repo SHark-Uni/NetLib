@@ -54,6 +54,7 @@ namespace Core
 		SPAWN_X = 300,
 		SPAWN_Y = 250,
 	};
+
 	enum class MAX_MAP_BOUNDARY
 	{
 		LEFT = 10,

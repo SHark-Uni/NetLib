@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NetLib.h"
+#define GAME_DEBUG (1)
 
 namespace Core
 {

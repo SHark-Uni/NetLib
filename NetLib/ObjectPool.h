@@ -29,13 +29,18 @@ namespace Common
 				cur = prev;
 			}
 		}
+		
+		inline bool empty() const
+		{
+			return (_FreeList == nullptr);
+		}
 
 		T* allocate()
 		{
 			T* ret;
 			if (_FreeList != nullptr)
 			{
-				ret = reinterpret_cast<T*>(&_CurSlot->_Data);
+				ret = reinterpret_cast<T*>(&_FreeList->_Data);
 				_FreeList = _FreeList->_pNext;
 				return ret;
 			}
@@ -53,10 +58,38 @@ namespace Common
 		template<class... Args>
 		T* allocate_constructor(Args&&... args)
 		{
-			T* element = allocate();
+			// 기존에 있는 대상을 재활용하는 경우..
+			T* element;
+
+			// 오브젝트 내의 포인터들은 재활용의 대상x.
+			element = allocate();
 			new (static_cast<void*>(element)) T(std::forward<Args>(args)...);
 			return element;
 		}
+
+		//개체가 포인터를 갖는경우, 그 포인터를 안날려주고 싶을 수 있음.
+		template<class... Args>
+		T* allocate_reuse(Args&&... args)
+		{
+			T* element;
+			if (_FreeList != nullptr)
+			{
+				element = &_FreeList->_Data;
+				_FreeList = _FreeList->_pNext;
+				return element;
+			}
+
+			//진짜 새롭게 할당해주어야 하는 대상이라면
+			if (_CurSlot >= _LastSlot)
+			{
+				allocateBucket();
+			}
+			element = reinterpret_cast<T*>(&_CurSlot->_Data);
+			new (static_cast<void*>(element)) T(std::forward<Args>(args)...);
+			_CurSlot++;
+			return element;
+		}
+
 
 		void deAllocate_destructor(T* pMemory)
 		{
@@ -74,6 +107,8 @@ namespace Common
 				return;
 			}
 		}
+
+
 		static ObjectPool<T, BucketCount>& getInstance()
 		{
 			static ObjectPool<T, BucketCount> _singleton;

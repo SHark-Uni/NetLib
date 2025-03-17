@@ -7,6 +7,7 @@
 #include <WS2tcpip.h>
 #include <unordered_map>
 
+#define GAME_DEBUG (1)
 
 #include "ErrorMessage.h"
 #include "Config.h"

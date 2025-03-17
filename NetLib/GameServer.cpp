@@ -430,9 +430,6 @@ void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
 	//내 캐릭터 정보 찾기
 	int playerKey = _keys.find(key)->second;
 	Player* attacker = _Players.find(playerKey)->second;
-	
-	short myX = attacker->GetX();
-	short myY = attacker->GetY();
 
 	MESSAGE_HEADER header;
 	MESSAGE_RES_ATTACK_KICK sendMsg;
@@ -440,7 +437,7 @@ void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
 
 	//어택 Message Send
 	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_KICK), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_KICK), header);
-	buildMsg_attack_kick(playerKey, attackDir, myX, myY, sendMsg);
+	buildMsg_attack_kick(playerKey, attackDir, attacker->GetX(), attacker->GetY(), sendMsg);
 	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
 	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_KICK));
 	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_KICK) + sizeof(MESSAGE_HEADER));
@@ -457,8 +454,8 @@ void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
 		int targetX = target->GetX();
 		int targetY = target->GetY();
 		if (CheckAttackInRange(
-			myX,
-			myY,
+			attacker->GetX(),
+			attacker->GetY(),
 			static_cast<int>(PLAYER_ATTACK_RANGE::KICK_X),
 			static_cast<int>(PLAYER_ATTACK_RANGE::KICK_Y),
 			targetX, targetY, attackDir))
@@ -514,30 +511,22 @@ void GameServer::OnDestroyProc(const SESSION_KEY key)
 	const auto& iter2 = _Players.find(playerKey);
 	Player* DeathPlayer = iter2->second;
 
-	MESSAGE_HEADER header;
-	MESSAGE_RES_DELETE_CHARACTER sendMsg;
 #ifdef GAME_DEBUG
 	printf("============================================================\n");
 	printf("DELETE CHARACTER MESSAGE\n");
 	printf("PLAYER ID : %d \n", playerKey);
 	printf("============================================================\n");
 #endif
-	char buffer[32] = { 0, };
-	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DELETE_CHARACTER), static_cast<char>(MESSAGE_DEFINE::RES_DELETE_CHARACTER), header);
-	buildMsg_deleteCharacter(playerKey, sendMsg);
-
-	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_DELETE_CHARACTER));
-	SendBroadCast(key, buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_DELETE_CHARACTER));
-
 	Disconnect(key);
 	DeathPlayer->SetPlayerDeath();
 }
 
 void GameServer::cleanUpPlayer()
 {
+	//진짜 지우는 경우
 	auto iter = _Players.begin();
 	auto iter_e = _Players.end();
+	MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
 
 	for (; iter != iter_e; )
 	{
@@ -546,8 +535,18 @@ void GameServer::cleanUpPlayer()
 
 		if (cur->IsAlive() == false)
 		{
+			MESSAGE_HEADER header;
+			MESSAGE_RES_DELETE_CHARACTER sendMsg;
+
+			char buffer[32] = { 0, };
+			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DELETE_CHARACTER), static_cast<char>(MESSAGE_DEFINE::RES_DELETE_CHARACTER), header);
+			buildMsg_deleteCharacter(key, sendMsg);
+
+			memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
+			memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_DELETE_CHARACTER));
+			SendBroadCast(cur->GetSessionId(), buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_DELETE_CHARACTER));
+
 			_keys.erase(cur->GetSessionId());
-			MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
 			pool.deAllocate(cur);
 			iter = _Players.erase(iter);
 			continue;

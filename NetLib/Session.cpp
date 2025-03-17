@@ -17,12 +17,15 @@ void Session::InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connect
 
 	auto& pool = ObjectPool<CircularQueue, POOL_SIZE>::getInstance();
 
-	_pRecvQueue = pool.allocate_constructor(QUEUE_SIZE);
-	_pSendQueue = pool.allocate_constructor(QUEUE_SIZE);
-	/*
-	_pRecvQueue = new CircularQueue(QUEUE_SIZE);
-	_pSendQueue = new CircularQueue(QUEUE_SIZE);
-	*/
+	_pRecvQueue = pool.allocate_reuse(QUEUE_SIZE);
+	_pSendQueue = pool.allocate_reuse(QUEUE_SIZE);
+
+	//_pRecvQueue->clear();
+	//_pSendQueue->clear();
+
+	//_pRecvQueue = new CircularQueue(QUEUE_SIZE);
+	//_pSendQueue = new CircularQueue(QUEUE_SIZE);
+	
 }
 
 void NetLib::Session::DestroySession()

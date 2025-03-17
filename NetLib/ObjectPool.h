@@ -1,6 +1,7 @@
 #pragma once
 #include <utility>
 #include <new>
+
 namespace Common
 {
 	//objectpool 
@@ -47,12 +48,6 @@ namespace Common
 			ret = reinterpret_cast<T*>(&_CurSlot->_Data);
 			_CurSlot++;
 			return ret;
-		}
-
-		template<typename U, class... Args>
-		void construct(U* p, Args&&... args)
-		{
-			new (p) U(std::forward<Args>(args)...);
 		}
 
 		template<class... Args>

@@ -1,5 +1,6 @@
 #pragma once
 #include <utility>
+#include <new>
 
 #ifdef MEMORY_POOL_DEBUG
 #include <windows.h>

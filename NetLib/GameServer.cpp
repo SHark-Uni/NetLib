@@ -250,8 +250,8 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 		printf("OUT OF BOUNDARY DISCONNECT!\n");
 		WCHAR buffer[80] = { 0, };
 		swprintf_s(buffer, L"PLAYER X : %hd | PLAYER Y : %hd | RECV X : %hd | RECV Y : %hd\n", playerX, playerY, recvX, recvY);
-#endif
 		Logger::Logging(-2, __LINE__, buffer);
+#endif
 		OnDestroyProc(key);
 		return;
 	}

@@ -162,7 +162,6 @@ namespace Common
 		int _HitTargetId;
 		_BYTE _HitTargetHp;
 	}res_damage_t;
-
 	#pragma pack(pop)
 
 }

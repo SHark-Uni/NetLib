@@ -10,7 +10,6 @@
 using namespace Common;
 namespace NetLib
 {
-
 	class NetWorkLib; 
 	class Session
 	{
@@ -48,13 +47,13 @@ namespace NetLib
 		USHORT GetPort();
 	private:
 		friend class NetWorkLib;
+		SOCKET _Socket;
 		enum
 		{
-			RING_BUFFER_POOL_SIZE = 4096,
-			SEND_BUFFER_SIZE = 4096,
-			RECV_BUFFER_SIZE = 1024,
+			POOL_SIZE = 2048,
+			QUEUE_SIZE = 4096,
 		};
-		SOCKET _Socket;
+
 		CircularQueue* _pSendQueue;
 		CircularQueue* _pRecvQueue;
 		bool _Alive;

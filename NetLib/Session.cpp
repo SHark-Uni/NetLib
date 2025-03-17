@@ -1,7 +1,10 @@
 #include "Session.h"
-#include "MemoryPool.h"
+#include "ObjectPool.h"
 
 using namespace NetLib;
+
+constexpr size_t POOL_SIZE = 2048;
+constexpr int QSIZE = 4096;
 
 void Session::InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo, const int key)
 {
@@ -10,8 +13,16 @@ void Session::InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connect
 	_Alive = true;
 	_Key = key;
 	//TODO : 오브젝트 풀로 RINGBUFFER 만들어서 생성 / 반납
-	_pRecvQueue = new CircularQueue(RECV_BUFFER_SIZE);
-	_pSendQueue = new CircularQueue(SEND_BUFFER_SIZE);
+
+
+	auto& pool = ObjectPool<CircularQueue, POOL_SIZE>::getInstance();
+
+	_pRecvQueue = pool.allocate_constructor(QUEUE_SIZE);
+	_pSendQueue = pool.allocate_constructor(QUEUE_SIZE);
+	/*
+	_pRecvQueue = new CircularQueue(QUEUE_SIZE);
+	_pSendQueue = new CircularQueue(QUEUE_SIZE);
+	*/
 }
 
 void NetLib::Session::DestroySession()

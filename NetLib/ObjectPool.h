@@ -1,6 +1,6 @@
 #pragma once
 #include <utility>
-
+#include <new>
 namespace Common
 {
 	//objectpool 
@@ -34,7 +34,7 @@ namespace Common
 			T* ret;
 			if (_FreeList != nullptr)
 			{
-				ret = &_CurSlot->_Data;
+				ret = reinterpret_cast<T*>(&_CurSlot->_Data);
 				_FreeList = _FreeList->_pNext;
 				return ret;
 			}
@@ -44,16 +44,22 @@ namespace Common
 			{
 				allocateBucket();
 			}
-			ret = &_CurSlot->_Data;
+			ret = reinterpret_cast<T*>(&_CurSlot->_Data);
 			_CurSlot++;
 			return ret;
+		}
+
+		template<typename U, class... Args>
+		void construct(U* p, Args&&... args)
+		{
+			new (p) U(std::forward<Args>(args)...);
 		}
 
 		template<class... Args>
 		T* allocate_constructor(Args&&... args)
 		{
-			T* elemnt = allocate();
-			new (element) T(std::forward<Args>(args)...);
+			T* element = allocate();
+			new (static_cast<void*>(element)) T(std::forward<Args>(args)...);
 			return element;
 		}
 
@@ -73,7 +79,11 @@ namespace Common
 				return;
 			}
 		}
-
+		static ObjectPool<T, BucketCount>& getInstance()
+		{
+			static ObjectPool<T, BucketCount> _singleton;
+			return _singleton;
+		}
 	private:
 		struct Slot
 		{
@@ -89,9 +99,11 @@ namespace Common
 			_CurSlot = _CurBucket + DUMMY_SIZE;
 			_LastSlot = newBucket + (BucketCount + DUMMY_SIZE);
 		}
+
 		enum {
 			DUMMY_SIZE = 1,
 		};
+
 		Slot* _CurBucket;
 		Slot* _CurSlot;
 		Slot* _LastSlot;

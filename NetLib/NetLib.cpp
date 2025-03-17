@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include "Session.h"
 #include "MessageFormat.h"
+#include "ObjectPool.h"
 
 using namespace Common;
 using namespace NetLib;
@@ -395,8 +396,9 @@ void NetWorkLib::Disconnect(SESSION_KEY sessionKey)
 
 void NetWorkLib::CleanupSession()
 {
-	MemoryPool<Session, SESSION_POOL_SIZE>& pool = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance();
+	auto& pool = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance();
 
+	auto& ringbufferPool = ObjectPool<CircularQueue, Session::POOL_SIZE>::getInstance();
 	auto iter = _Sessions.begin();
 	auto iter_e = _Sessions.end();
 
@@ -407,6 +409,8 @@ void NetWorkLib::CleanupSession()
 		if (cur->GetConnection() == false)
 		{
 			closesocket(cur->GetSocket());
+			ringbufferPool.deAllocate(cur->_pRecvQueue);
+			ringbufferPool.deAllocate(cur->_pSendQueue);
 			pool.deAllocate(cur);
 			iter = _Sessions.erase(iter);
 			continue;

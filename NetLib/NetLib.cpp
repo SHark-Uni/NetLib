@@ -1,8 +1,10 @@
 #include "NetLib.h"
 #include "Logger.h"
 #include "Session.h"
+#include "NetDefine.h"
 #include "MessageFormat.h"
 #include "ObjectPool.h"
+#include "MemoryPool.h"
 
 using namespace Common;
 using namespace NetLib;
@@ -13,8 +15,7 @@ NetWorkLib::~NetWorkLib()
 	for (auto& session : _Sessions)
 	{
 		Session* cur = session.second;
-		cur->DestroySession();
-		MemoryPool<Session, SESSION_POOL_SIZE>::getInstance().deAllocate(cur);
+		MemoryPool<Session, static_cast<size_t>(NETLIB_POOL_SIZE::SESSION_POOL_SIZE)>::getInstance().deAllocate(cur);
 	}
 
 	closesocket(_ListenSocket);
@@ -111,7 +112,6 @@ void NetWorkLib::Process()
 	auto iter = _Sessions.begin();
 	auto SessionEnd_iter = _Sessions.end();
 
-	Session* curSession;
 	while (true)
 	{
 		FD_SET readSet;
@@ -120,9 +120,10 @@ void NetWorkLib::Process()
 		FD_ZERO(&writeSet);
 		maxLoopCnt = 0;
 		FD_SET(_ListenSocket, &readSet);
-		/* TODO : 64번씩 돌아야함.MAX_LOOP_CNT로 64번씩 통제해주는 코드 추가해야함. */
+
 		for (; iter != SessionEnd_iter && maxLoopCnt < SELECT_MAX_CNT; ++iter)
 		{
+			Session* curSession;
 			curSession = iter->second;
 			FD_SET(curSession->GetSocket(), &readSet);
 			if (curSession->CanSendData())
@@ -145,6 +146,7 @@ void NetWorkLib::Process()
 
 		for (; SesionStart_iter != iter; ++SesionStart_iter)
 		{
+			Session* curSession;
 			curSession = SesionStart_iter->second;
 			if (FD_ISSET(curSession->GetSocket(), &readSet))
 			{
@@ -171,9 +173,7 @@ void NetWorkLib::_RecvProc(Session* session)
 	int recvLen;
 	int errorCode;
 
-	//Reading 용도로만 RecvQ 쓰기
 	CircularQueue* const pRecvQ = session->_pRecvQueue;
-
 	recvLen = ::recv(session->GetSocket(), pRecvQ->GetRearPtr(), pRecvQ->GetDirect_EnqueueSize(), 0);
 	if (recvLen <= 0)
 	{
@@ -199,40 +199,56 @@ void NetWorkLib::_RecvProc(Session* session)
 	}
 	pRecvQ->MoveRear(recvLen);
 
+	int peekMessageLen;
+	int payLoadLen;
+	int dequeueLen;
+	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
 	// 한번 받은 메시지는 모두 처리한다.
 	while (true)
-	{	//TODO : 이 부분은 컨텐츠와 결합되버림. 추후 변경
-		int peekMessageLen;
-		int payLoadLen;
-
-		char tmp[3] = { 0 };
-		peekMessageLen = pRecvQ->Peek(tmp, sizeof(header_t));
+	{	
+		header_t header;
+		peekMessageLen = pRecvQ->Peek(reinterpret_cast<char*>(&header), sizeof(header_t));
 		if (peekMessageLen < sizeof(header_t))
 		{
 			break;
 		}
-		header_t* header = reinterpret_cast<header_t*>(tmp);
-		if (header->_Code != SIGNITURE)
+
+		if (header._Code != SIGNITURE)
 		{
 			break;
 		}
 
-		payLoadLen = header->_PayloadLen;
-		char buffer[32] = { 0, };
-		peekMessageLen = pRecvQ->Peek(buffer, (payLoadLen + sizeof(header_t)));
-		if (peekMessageLen < payLoadLen + sizeof(header_t))
+		SerializeBuffer* sbuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+		sbuffer->clear();
+
+		payLoadLen = header._PayloadLen;
+		if (pRecvQ->GetCurrentSize() < payLoadLen + sizeof(header_t))
 		{
+			SbufferPool.deAllocate(sbuffer);
 			break;
 		}
-		pRecvQ->Dequeue(buffer, payLoadLen + sizeof(header_t));
-		int debugKey = session->GetSessionKey();
+
+		dequeueLen = pRecvQ->Dequeue(sbuffer->getBufferPtr(), payLoadLen + sizeof(header_t));
+		//여기서 dequeueLen이 요청한 크기보다 작은건 내가 잘못만든거임. 
+		if (dequeueLen != payLoadLen + sizeof(header_t))
+		{
+			Logger::Logging(static_cast<int>(eERROR_MESSAGE::SELECT_FAIL), __LINE__, L"SELECT ERROR");
+			SbufferPool.deAllocate(sbuffer);
+			DebugBreak();
+			break;
+		}
+		sbuffer->moveWritePos(dequeueLen);
+		sbuffer->getData(reinterpret_cast<char*>(&header), sizeof(header_t));
 #ifdef GAME_DEBUG
+		int debugKey = session->GetSessionKey();
 		printf("============================================================\n");
 		printf("SESSION Key : %d | In Network | \n", debugKey);
 		printf("RECEIVE HEADER , CODE : %d | TYPE :%d | PAYLOADLEN : %d\n", header->_Code, header->_MessageType, header->_PayloadLen);
 		printf("============================================================\n");
 #endif
-		OnRecvProc(buffer, tmp, sizeof(header_t), session->GetSessionKey());
+		//payload만 넘기기
+		OnRecvProc(sbuffer, header._MessageType, session->GetSessionKey());
+		SbufferPool.deAllocate(sbuffer);
 	}
 	return;
 }
@@ -259,7 +275,7 @@ void NetWorkLib::_AcceptProc()
 
 	//성공적으로 Accpet
 	//세션 생성
-	Session* newSession = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance().allocate();
+	Session* newSession = MemoryPool<Session, static_cast<size_t>(NETLIB_POOL_SIZE::SESSION_POOL_SIZE)>::getInstance().allocate();
 	int key = newSession->GenerateSessionKey();
 	newSession->InitSession(connectSocket, connectInfo, key);
 	_Sessions.insert({ key, newSession });
@@ -297,7 +313,7 @@ void NetWorkLib::_SendProc(Session* session)
 	pSendQueue->MoveFront(sendLen);
 }
 
-void NetWorkLib::SendUniCast(const SESSION_KEY sessionKey, char* message, const size_t messageLen)
+void NetWorkLib::SendUniCast(const SESSION_KEY sessionKey, SerializeBuffer* message, const size_t messageLen)
 {
 	int enqueueLen;
 	const auto& iter = _Sessions.find(sessionKey);
@@ -310,7 +326,8 @@ void NetWorkLib::SendUniCast(const SESSION_KEY sessionKey, char* message, const 
 		}
 
 		CircularQueue* const curSendQ = findSession->_pSendQueue;
-		enqueueLen = curSendQ->Enqueue(message, messageLen);
+		enqueueLen = curSendQ->Enqueue(message->getBufferPtr(), messageLen);
+		message->moveReadPos(enqueueLen);
 
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
@@ -325,7 +342,7 @@ void NetWorkLib::SendUniCast(const SESSION_KEY sessionKey, char* message, const 
 	return;
 }
 
-void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
+void NetWorkLib::SendBroadCast(SerializeBuffer* message, const size_t messageLen)
 {
 	int enqueueLen;
 	for (auto& session : _Sessions)
@@ -336,7 +353,8 @@ void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
 		}
 
 		CircularQueue* const curSendQ = session.second->_pSendQueue;
-		enqueueLen = curSendQ->Enqueue(message, messageLen);
+		enqueueLen = curSendQ->Enqueue(message->getBufferPtr(), messageLen);
+
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
 #ifdef GAME_DEBUG
@@ -347,9 +365,10 @@ void NetWorkLib::SendBroadCast(char* message, const size_t messageLen)
 			continue;
 		}
 	}
+	message->moveReadPos(messageLen);
 }
 
-void NetWorkLib::SendBroadCast(SESSION_KEY exceptSession, char* message, const size_t messageLen)
+void NetWorkLib::SendBroadCast(SESSION_KEY exceptSession, SerializeBuffer* message, const size_t messageLen)
 {
 	int enqueueLen;
 	for (auto& session : _Sessions)
@@ -364,7 +383,7 @@ void NetWorkLib::SendBroadCast(SESSION_KEY exceptSession, char* message, const s
 		}
 
 		CircularQueue* const curSendQ = session.second->_pSendQueue;
-		enqueueLen = curSendQ->Enqueue(message, messageLen);
+		enqueueLen = curSendQ->Enqueue(message->getBufferPtr(), messageLen);
 
 		if (enqueueLen < static_cast<int>(messageLen))
 		{
@@ -376,6 +395,7 @@ void NetWorkLib::SendBroadCast(SESSION_KEY exceptSession, char* message, const s
 			continue;
 		}
 	}
+	message->moveReadPos(messageLen);
 }
 
 void NetWorkLib::Disconnect(SESSION_KEY sessionKey)
@@ -393,7 +413,7 @@ void NetWorkLib::Disconnect(SESSION_KEY sessionKey)
 
 void NetWorkLib::CleanupSession()
 {
-	auto& pool = MemoryPool<Session, SESSION_POOL_SIZE>::getInstance();
+	auto& pool = MemoryPool<Session, static_cast<size_t>(NETLIB_POOL_SIZE::SESSION_POOL_SIZE)>::getInstance();
 	auto& ringbufferPool = ObjectPool<CircularQueue, Session::POOL_SIZE>::getInstance();
 
 	auto iter = _Sessions.begin();

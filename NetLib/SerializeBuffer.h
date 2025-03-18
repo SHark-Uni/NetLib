@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string.h>
-
 namespace Common
 {
 	class SerializeBuffer
@@ -39,6 +38,7 @@ namespace Common
 				cpySize = _WritePos - _ReadPos;
 			}
 			memcpy(dst, _pBuffer + _ReadPos, cpySize);
+			_ReadPos += cpySize;
 			return cpySize;
 		}
 
@@ -49,7 +49,8 @@ namespace Common
 			{
 				cpySize = _Capacity - _WritePos;
 			}
-			memcpy(_pBuffer + _ReadPos, src, cpySize);
+			memcpy(_pBuffer + _WritePos, src, cpySize);
+			_WritePos += cpySize;
 			return cpySize;
 		}
 
@@ -59,7 +60,7 @@ namespace Common
 		}
 		inline int getUsedSize() const
 		{
-			return _WritePos - _ReadPos;
+			return (_WritePos - _ReadPos);
 		}
 
 		inline bool checkFailBit() const
@@ -75,7 +76,7 @@ namespace Common
 
 		inline char* getBufferPtr()
 		{
-			return _pBuffer + _ReadPos;
+			return (_pBuffer + _ReadPos);
 		}
 
 		inline int moveWritePos(size_t size)
@@ -104,7 +105,6 @@ namespace Common
 			_WritePos = 0;
 			_ReadPos = 0;
 		}
-
 
 		inline SerializeBuffer& operator>> (unsigned char& value)
 		{

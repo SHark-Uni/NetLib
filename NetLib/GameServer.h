@@ -1,7 +1,6 @@
 #pragma once
 
 #include "NetLib.h"
-#define GAME_DEBUG (1)
 
 namespace Core
 {
@@ -12,15 +11,17 @@ namespace Core
 		typedef int PLAYER_KEY;
 		GameServer();
 		virtual ~GameServer();
+
 		void OnAcceptProc(const SESSION_KEY key) override;
-		void OnRecvProc(char* message, char* header, size_t hLen, SESSION_KEY key) override;
-		void OnDestroyProc(const SESSION_KEY key) override; 
+		void OnRecvProc(Common::SerializeBuffer* message, const char msgType, SESSION_KEY key) override;
+		void OnDestroyProc(const SESSION_KEY key) override;
+
 		/*=== ÄÁÅÙÃ÷ ====*/
-		void ReqMoveStartProc(char* message, const SESSION_KEY key);
-		void ReqMoveStopProc(char* message, const SESSION_KEY key);
-		void ReqAttackLeftHandProc(char* message, const SESSION_KEY key);
-		void ReqAttackRightHandProc(char* message, const SESSION_KEY key);
-		void ReqAttackKickProc(char* message, const SESSION_KEY key);
+		void ReqMoveStartProc(Common::SerializeBuffer* message, const SESSION_KEY key);
+		void ReqMoveStopProc(Common::SerializeBuffer* message, const SESSION_KEY key);
+		void ReqAttackLeftHandProc(Common::SerializeBuffer* message, const SESSION_KEY key);
+		void ReqAttackRightHandProc(Common::SerializeBuffer* message, const SESSION_KEY key);
+		void ReqAttackKickProc(Common::SerializeBuffer* message, const SESSION_KEY key);
 		
 		bool CheckAttackInRange(const short attackerX, const short attackerY, const int AttackRangeX, const int AttackRangeY, const short targetX, const short targetY, const char direction);
 		bool CheckDirection(char direction);

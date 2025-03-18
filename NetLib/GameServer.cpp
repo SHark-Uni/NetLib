@@ -5,9 +5,12 @@
 #include "Player.h"
 #include "PlayerDefine.h"
 #include "Logger.h"
-
+#include "NetDefine.h"
+#include "ObjectPool.h"
 
 #include <cassert>
+
+using namespace NetLib;
 using namespace Core;
 using namespace Common;
 
@@ -36,46 +39,41 @@ void GameServer::OnAcceptProc(const SESSION_KEY key)
 	playerKey = newPlayer->generatePlayerId();
 
 	newPlayer->Init(playerKey, key);
-	//Player 등록
 	_keys.insert({ key, playerKey });
 	_Players.insert({ playerKey, newPlayer });
 
+	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
+	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	sBuffer->clear();
 	//1. 내 캐릭터 생성 메시지 전송
-	header_t						header;
-	MESSAGE_RES_CREATE_MY_CHARACTER sendMsg;
-
 	buildMsg_Header(
 		SIGNITURE,
 		sizeof(MESSAGE_RES_CREATE_MY_CHARACTER),
 		static_cast<int>(MESSAGE_DEFINE::RES_CREATE_MY_CHARACTER),
-		header
+		sBuffer
 	);
+
 	buildMsg_createMyCharacter(
 		playerKey,
 		newPlayer->GetDirection(),
 		newPlayer->GetX(),
 		newPlayer->GetY(),
 		newPlayer->GetHp(),
-		sendMsg
+		sBuffer
 	);
 	//메시지 조립 후 전달. 지금은 임시버퍼 쓰는 중
-	char buffer[32] = { 0, };
-	memcpy(buffer, &header, sizeof(header_t));
-	memcpy(buffer + sizeof(header_t), &sendMsg, sizeof(MESSAGE_RES_CREATE_MY_CHARACTER));
-	SendUniCast(key, buffer, sizeof(MESSAGE_RES_CREATE_MY_CHARACTER) + sizeof(header_t));
+	SendUniCast(key, sBuffer, sizeof(MESSAGE_RES_CREATE_MY_CHARACTER) + sizeof(header_t));
 
+	sBuffer->clear();
 	//2.내 캐릭터 생성 메시지 모두에게 보내주기
-	MESSAGE_RES_CREATE_OTHER_CHARACTER otherChracterMsg;
 	buildMsg_Header(
 		SIGNITURE,
 		sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER),
 		static_cast<int>(MESSAGE_DEFINE::RES_CREATE_OTHER_CHARACTER),
-		header
+		sBuffer
 	);
-	buildMsg_createOtherCharacter(playerKey, newPlayer->GetDirection(), newPlayer->GetX(), newPlayer->GetY(), newPlayer->GetHp(), otherChracterMsg);
-	memcpy(buffer, &header, sizeof(header_t));
-	memcpy(buffer + sizeof(header_t), &otherChracterMsg, sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
-	SendBroadCast(key, buffer, sizeof(header_t) + sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
+	buildMsg_createOtherCharacter(playerKey, newPlayer->GetDirection(), newPlayer->GetX(), newPlayer->GetY(), newPlayer->GetHp(), sBuffer);
+	SendBroadCast(key, sBuffer, sizeof(header_t) + sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
 
 	//3. 기존에 있던 캐릭터들 생성해주는 메시지 보내기.
 	int						curId;
@@ -99,60 +97,52 @@ void GameServer::OnAcceptProc(const SESSION_KEY key)
 		curAction = cur->GetAction();
 		hp = cur->GetHp();
 
-		/*TODO : 직렬화 버퍼로 다 바꿀예정.*/
+		sBuffer->clear();
 		buildMsg_Header(
 			SIGNITURE,
 			sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER),
 			static_cast<char>(MESSAGE_DEFINE::RES_CREATE_OTHER_CHARACTER),
-			header
+			sBuffer
 		);
-		buildMsg_createOtherCharacter(curId, curDir, curX, curY, hp, otherChracterMsg);
-
-		memcpy(buffer, &header, sizeof(header_t));
-		memcpy(buffer + sizeof(header_t), &otherChracterMsg, sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
-		SendUniCast(key, buffer, sizeof(header_t) + sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
+		buildMsg_createOtherCharacter(curId, curDir, curX, curY, hp, sBuffer);
+		SendUniCast(key, sBuffer, sizeof(header_t) + sizeof(MESSAGE_RES_CREATE_OTHER_CHARACTER));
 
 		//MOVE START 메시지도 보내야함.
 		if (curAction > 0)
 		{
-			MESSAGE_RES_MOVE_START moveMsg;
+			sBuffer->clear();
 			buildMsg_Header(
 				SIGNITURE,
 				sizeof(MESSAGE_RES_MOVE_START),
 				static_cast<char>(MESSAGE_DEFINE::RES_MOVE_START),
-				header
+				sBuffer
 			);
-			buildMsg_move_start(curId, curAction, curX, curY, moveMsg);
-			memcpy(buffer, &header, sizeof(header_t));
-			memcpy(buffer + sizeof(header_t), &moveMsg, sizeof(MESSAGE_RES_MOVE_START));
-
-			SendUniCast(key, buffer, sizeof(header_t) + sizeof(MESSAGE_RES_MOVE_START));
+			buildMsg_move_start(curId, curAction, curX, curY, sBuffer);
+			SendUniCast(key, sBuffer, sizeof(header_t) + sizeof(MESSAGE_RES_MOVE_START));
 		}
 	}
+	SbufferPool.deAllocate(sBuffer);
 }
 
-void GameServer::OnRecvProc(char* message, char* header, size_t hLen, SESSION_KEY key)
+void GameServer::OnRecvProc(SerializeBuffer* message, const char msgType, SESSION_KEY key)
 {
-	char msgType = reinterpret_cast<header_t*>(header)->_MessageType;
 	//Header 제외하고 payload 넘겨주자
-	char* payload = message + hLen;
-
 	switch (msgType)
 	{
 	case static_cast<int>(MESSAGE_DEFINE::REQ_MOVE_START):
-		ReqMoveStartProc(payload, key);
+		ReqMoveStartProc(message, key);
 		break;
 	case static_cast<int>(MESSAGE_DEFINE::REQ_MOVE_STOP):
-		ReqMoveStopProc(payload, key);
+		ReqMoveStopProc(message, key);
 		break;
 	case static_cast<int>(MESSAGE_DEFINE::REQ_ATTACK_LEFT_HAND):
-		ReqAttackLeftHandProc(payload, key);
+		ReqAttackLeftHandProc(message, key);
 		break;
 	case static_cast<int>(MESSAGE_DEFINE::REQ_ATTACK_RIGHT_HAND):
-		ReqAttackRightHandProc(payload, key);
+		ReqAttackRightHandProc(message, key);
 		break;
 	case static_cast<int>(MESSAGE_DEFINE::REQ_ATTACK_KICK):
-		ReqAttackKickProc(payload, key);
+		ReqAttackKickProc(message, key);
 		break;
 	default:
 #ifdef GAME_DEBUG
@@ -165,12 +155,18 @@ void GameServer::OnRecvProc(char* message, char* header, size_t hLen, SESSION_KE
 	return;
 }
 /* 컨텐츠 구현 하기! 예외 케이스들 생각해보자.*/
-void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
+void GameServer::ReqMoveStartProc(SerializeBuffer* message, const SESSION_KEY key)
 {
-	MESSAGE_REQ_MOVE_START* recvMsg = reinterpret_cast<MESSAGE_REQ_MOVE_START*>(message);
-	char action = recvMsg->_Direction;
-	unsigned short recvX = recvMsg->_X;
-	unsigned short recvY = recvMsg->_Y;
+	char action;
+	unsigned short recvX;
+	unsigned short recvY;
+
+	*message >> action >> recvX >> recvY;
+	if (message->checkFailBit() == true)
+	{
+		//읽기 실패. 직렬화 버퍼 순서 잘못한거임. 혹은, 메시지 크기가 협의되지 않은상태로 들어옴.
+		DebugBreak();
+	}
 
 	//범위 넘는 메시지 무시
 	if (recvX > static_cast<int>(MAX_MAP_BOUNDARY::RIGHT) || recvY > static_cast<int>(MAX_MAP_BOUNDARY::BOTTOM))
@@ -206,33 +202,36 @@ void GameServer::ReqMoveStartProc(char* message, const SESSION_KEY key)
 		break;
 	}
 
+	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
+	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	sBuffer->clear();
 	//나 빼고 다 보내기
-	MESSAGE_RES_MOVE_START sendMsg;
-	MESSAGE_HEADER header;
-	char buffer[32] = { 0 , };
-	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_START), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_START), header);
-	buildMsg_move_start(playerKey, action, recvX, recvY, sendMsg);
 
-	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_MOVE_START));
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_START), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_START), sBuffer);
+	buildMsg_move_start(playerKey, action, recvX, recvY, sBuffer);
+
 #ifdef GAME_DEBUG
 	printf("============================================================\n");
 	printf("MOVE START MESSAGE\n");
 	printf("PLAYER ID : %d | SESSION ID : %d | PARAMETER KEY : %d |CUR_X : %hd  | CUR_Y : %hd |\n", player->GetPlayerId(), player->GetSessionId(), key, player->GetX(), player->GetY());
 	printf("============================================================\n");
 #endif
-	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_MOVE_START) + sizeof(MESSAGE_HEADER));
+	SendBroadCast(key, sBuffer, sizeof(MESSAGE_RES_MOVE_START) + sizeof(MESSAGE_HEADER));
+	SbufferPool.deAllocate(sBuffer);
 }
 
-void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
+void GameServer::ReqMoveStopProc(SerializeBuffer* message, const SESSION_KEY key)
 {
-	// stop시 좌표설정 
-	// 틀어짐이 심하지 않으면 인정
-	// 많이 틀어지면 연결 끊기.
-	MESSAGE_REQ_MOVE_STOP* recvMsg = reinterpret_cast<MESSAGE_REQ_MOVE_STOP*>(message);
-	char direction = recvMsg->_Direction;
-	unsigned short recvX = recvMsg->_X;
-	unsigned short recvY = recvMsg->_Y;
+	char direction;
+	unsigned short recvX;
+	unsigned short recvY;
+
+	*message >> direction >> recvX >> recvY;
+	if (message->checkFailBit() == true)
+	{
+		//읽기 실패. 직렬화 버퍼 순서 잘못한거임. 혹은, 메시지 크기가 협의되지 않은상태로 들어옴.
+		DebugBreak();
+	}
 
 	//내 캐릭터 정보 찾기
 	int playerKey = _keys.find(key)->second;
@@ -274,55 +273,52 @@ void GameServer::ReqMoveStopProc(char* message, const SESSION_KEY key)
 	printf("MOVE STOP MESSAGE\n");
 	printf("PLAYER ID : %d | SESSION ID : %d | PARAM KEY : %d |CUR_X : %hd  | CUR_Y : %hd |\n", player->GetPlayerId(), player->GetSessionId(), key, player->GetX(), player->GetY());
 #endif
+	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
+	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	sBuffer->clear();
+
 	//무브스탑 메시지 생성 후 보내기
-	MESSAGE_RES_MOVE_STOP sendMsg;
-	MESSAGE_HEADER header;
-	char buffer[32] = { 0 , };
-	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_STOP), header);
-	buildMsg_move_stop(playerKey, direction, player->GetX(), player->GetY(), sendMsg);
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_MOVE_STOP), static_cast<char>(MESSAGE_DEFINE::RES_MOVE_STOP), sBuffer);
+	buildMsg_move_stop(playerKey, direction, player->GetX(), player->GetY(), sBuffer);
+	SendBroadCast(key, sBuffer, sizeof(MESSAGE_RES_MOVE_STOP) + sizeof(MESSAGE_HEADER));
 
-	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_MOVE_STOP));
-	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_MOVE_STOP) + sizeof(MESSAGE_HEADER));
-
+	SbufferPool.deAllocate(sBuffer);
 	return;
 }
 
-void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
+void GameServer::ReqAttackLeftHandProc(SerializeBuffer* message, const SESSION_KEY key)
 {
-	MESSAGE_REQ_ATTACK_LEFT_HAND* recvMsg = reinterpret_cast<MESSAGE_REQ_ATTACK_LEFT_HAND*>(message);
-	char attackDir = recvMsg->_Direction;
+	char attackDir;
+	unsigned short recvX;
+	unsigned short recvY;
 
+	*message >> attackDir >> recvX >> recvY;
+	if (message->checkFailBit() == true)
+	{
+		//읽기 실패. 직렬화 버퍼 순서 잘못한거임. 혹은, 메시지 크기가 협의되지 않은상태로 들어옴.
+		DebugBreak();
+	}
 	//이상향 방향이 들어왔다면 무시. (그럴일은 없겠지만)
 	if (CheckDirection(attackDir) == false)
 	{
 		return;
 	}
-	unsigned short recvX = recvMsg->_X;
-	unsigned short recvY = recvMsg->_Y;
 
-	//내 캐릭터 정보 찾기
 	int playerKey = _keys.find(key)->second;
 	Player* attacker = _Players.find(playerKey)->second;
-	//TODO : attacker가 nullptr이 뜬다.
-
 	short myX = attacker->GetX();
 	short myY = attacker->GetY();
 
-	MESSAGE_HEADER header;
-	MESSAGE_RES_ATTACK_LEFT_HAND sendMsg;
-	char buffer[32] = { 0, };
-
+	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
+	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	
 	//어택 Message Send
-	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_LEFT_HAND), header);
-	buildMsg_attack_lefthand(playerKey, attackDir, myX, myY, sendMsg);
-	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND));
-
-	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND) + sizeof(MESSAGE_HEADER));
+	sBuffer->clear();
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_LEFT_HAND), sBuffer);
+	buildMsg_attack_lefthand(playerKey, attackDir, myX, myY, sBuffer);
+	SendBroadCast(key, sBuffer, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND) + sizeof(MESSAGE_HEADER));
 
 	//공격범위 판정
-	MESSAGE_RES_DAMAGE damageSendMsg;
 	for (auto& player : _Players)
 	{
 		Player* target = player.second;
@@ -340,29 +336,32 @@ void GameServer::ReqAttackLeftHandProc(char* message, const SESSION_KEY key)
 			static_cast<int>(PLAYER_ATTACK_RANGE::LEFT_HAND_Y),
 			targetX, targetY, attackDir))
 		{
+			sBuffer->clear();
 			target->Attacked(static_cast<int>(PLAYER_DAMAGE::LEFT_HAND));
-			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), header);
-			buildMsg_damage(playerKey, target->GetPlayerId(), target->GetHp(), damageSendMsg);
-			memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-			memcpy(buffer + sizeof(MESSAGE_HEADER), &damageSendMsg, sizeof(MESSAGE_RES_DAMAGE));
-
-			SendBroadCast(buffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
+			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), sBuffer);
+			buildMsg_damage(playerKey, target->GetPlayerId(), target->GetHp(), sBuffer);
+			SendBroadCast(sBuffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
 		}
 	}
+	SbufferPool.deAllocate(sBuffer);
 }
 
-void GameServer::ReqAttackRightHandProc(char* message, const SESSION_KEY key)
+void GameServer::ReqAttackRightHandProc(SerializeBuffer* message, const SESSION_KEY key)
 {
-	MESSAGE_REQ_ATTACK_RIGHT_HAND* recvMsg = reinterpret_cast<MESSAGE_REQ_ATTACK_RIGHT_HAND*>(message);
-	char attackDir = recvMsg->_Direction;
+	char attackDir;
+	unsigned short recvX;
+	unsigned short recvY;
 
+	*message >> attackDir >> recvX >> recvY;
+	if (message->checkFailBit() == true)
+	{
+		DebugBreak();
+	}
 	//이상향 방향이 들어왔다면 무시. (그럴일은 없겠지만)
 	if (CheckDirection(attackDir) == false)
 	{
 		return;
 	}
-	unsigned short recvX = recvMsg->_X;
-	unsigned short recvY = recvMsg->_Y;
 
 	//내 캐릭터 정보 찾기
 	int playerKey = _keys.find(key)->second;
@@ -371,20 +370,16 @@ void GameServer::ReqAttackRightHandProc(char* message, const SESSION_KEY key)
 	short myX = attacker->GetX();
 	short myY = attacker->GetY();
 
-	MESSAGE_HEADER header;
-	MESSAGE_RES_ATTACK_RIGHT_HAND sendMsg;
-	char buffer[32] = { 0, };
+	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
+	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	sBuffer->clear();
 
 	//어택 Message Send
-	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_RIGHT_HAND), header);
-	buildMsg_attack_righthand(playerKey, attackDir, myX, myY, sendMsg);
-	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND));
-
-	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND) + sizeof(MESSAGE_HEADER));
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_RIGHT_HAND), sBuffer);
+	buildMsg_attack_righthand(playerKey, attackDir, myX, myY, sBuffer);
+	SendBroadCast(key, sBuffer, sizeof(MESSAGE_RES_ATTACK_RIGHT_HAND) + sizeof(MESSAGE_HEADER));
 
 	//공격범위 판정
-	MESSAGE_RES_DAMAGE damageSendMsg;
 	for (auto& player : _Players)
 	{
 		Player* target = player.second;
@@ -402,48 +397,50 @@ void GameServer::ReqAttackRightHandProc(char* message, const SESSION_KEY key)
 			static_cast<int>(PLAYER_ATTACK_RANGE::RIGHT_HAND_Y),
 			targetX, targetY, attackDir))
 		{
-			target->Attacked(static_cast<int>(PLAYER_DAMAGE::RIGHT_HAND));
-			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), header);
-			buildMsg_damage(playerKey, target->GetPlayerId(), target->GetHp(), damageSendMsg);
-			memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-			memcpy(buffer + sizeof(MESSAGE_HEADER), &damageSendMsg, sizeof(MESSAGE_RES_DAMAGE));
+			sBuffer->clear();
 
-			SendBroadCast(buffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
+			target->Attacked(static_cast<int>(PLAYER_DAMAGE::RIGHT_HAND));
+			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), sBuffer);
+			buildMsg_damage(playerKey, target->GetPlayerId(), target->GetHp(), sBuffer);
+
+			SendBroadCast(sBuffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
 		}
 	}
-
+	SbufferPool.deAllocate(sBuffer);
 }
 
-void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
+void GameServer::ReqAttackKickProc(SerializeBuffer* message, const SESSION_KEY key)
 {
-	MESSAGE_REQ_ATTACK_KICK* recvMsg = reinterpret_cast<MESSAGE_REQ_ATTACK_KICK*>(message);
-	char attackDir = recvMsg->_Direction;
+	char attackDir;
+	unsigned short recvX;
+	unsigned short recvY;
+
+	*message >> attackDir >> recvX >> recvY;
+	if (message->checkFailBit() == true)
+	{
+		DebugBreak();
+	}
 
 	//이상향 방향이 들어왔다면 무시. (그럴일은 없겠지만)
 	if (CheckDirection(attackDir) == false)
 	{
 		return;
 	}
-	unsigned short recvX = recvMsg->_X;
-	unsigned short recvY = recvMsg->_Y;
 
 	//내 캐릭터 정보 찾기
 	int playerKey = _keys.find(key)->second;
 	Player* attacker = _Players.find(playerKey)->second;
 
-	MESSAGE_HEADER header;
-	MESSAGE_RES_ATTACK_KICK sendMsg;
-	char buffer[32] = { 0, };
+	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
+	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	sBuffer->clear();
 
 	//어택 Message Send
-	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_KICK), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_KICK), header);
-	buildMsg_attack_kick(playerKey, attackDir, attacker->GetX(), attacker->GetY(), sendMsg);
-	memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-	memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_ATTACK_KICK));
-	SendBroadCast(key, buffer, sizeof(MESSAGE_RES_ATTACK_KICK) + sizeof(MESSAGE_HEADER));
+	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_KICK), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_KICK), sBuffer);
+	buildMsg_attack_kick(playerKey, attackDir, attacker->GetX(), attacker->GetY(), sBuffer);
+	SendBroadCast(key, sBuffer, sizeof(MESSAGE_RES_ATTACK_KICK) + sizeof(MESSAGE_HEADER));
 
 	//공격범위 판정
-	MESSAGE_RES_DAMAGE damageSendMsg;
 	for (auto& player : _Players)
 	{
 		Player* target = player.second;
@@ -460,15 +457,16 @@ void GameServer::ReqAttackKickProc(char* message, const SESSION_KEY key)
 			static_cast<int>(PLAYER_ATTACK_RANGE::KICK_Y),
 			targetX, targetY, attackDir))
 		{
+			sBuffer->clear();
 			target->Attacked(static_cast<int>(PLAYER_DAMAGE::KICK));
-			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), header);
-			buildMsg_damage(playerKey, target->GetPlayerId(), target->GetHp(), damageSendMsg);
-			memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-			memcpy(buffer + sizeof(MESSAGE_HEADER), &damageSendMsg, sizeof(MESSAGE_RES_DAMAGE));
 
-			SendBroadCast(buffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
+			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DAMAGE), static_cast<char>(MESSAGE_DEFINE::RES_DAMAGE), sBuffer);
+			buildMsg_damage(playerKey, target->GetPlayerId(), target->GetHp(), sBuffer);
+			SendBroadCast(sBuffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
+
 		}
 	}
+	SbufferPool.deAllocate(sBuffer);
 }
 
 bool GameServer::CheckAttackInRange(const short attackerX, const short attackerY, const int AttackRangeX, const int AttackRangeY, const short targetX, const short targetY, const char direction)
@@ -505,10 +503,22 @@ bool GameServer::CheckDirection(char direction)
 void GameServer::OnDestroyProc(const SESSION_KEY key)
 {
 	const auto& iter = _keys.find(key);
-	PLAYER_KEY playerKey = iter->second;
+	//유효하지 않은 세션키?
+	if (iter == _keys.end())
+	{
+		DebugBreak();
+		return;
+	}
 
-	//유효하지 않은 플레이어키?
+	PLAYER_KEY playerKey = iter->second;
 	const auto& iter2 = _Players.find(playerKey);
+	if (iter2 == _Players.end())
+	{	
+		//유효하지 않은 플레이어키?
+		DebugBreak();
+		return;
+	}
+
 	Player* DeathPlayer = iter2->second;
 
 #ifdef GAME_DEBUG
@@ -528,6 +538,9 @@ void GameServer::cleanUpPlayer()
 	auto iter_e = _Players.end();
 	MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
 
+	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
+	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	
 	for (; iter != iter_e; )
 	{
 		Player* cur = iter->second;
@@ -535,16 +548,11 @@ void GameServer::cleanUpPlayer()
 
 		if (cur->IsAlive() == false)
 		{
-			MESSAGE_HEADER header;
-			MESSAGE_RES_DELETE_CHARACTER sendMsg;
+			sBuffer->clear();
 
-			char buffer[32] = { 0, };
-			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DELETE_CHARACTER), static_cast<char>(MESSAGE_DEFINE::RES_DELETE_CHARACTER), header);
-			buildMsg_deleteCharacter(key, sendMsg);
-
-			memcpy(buffer, &header, sizeof(MESSAGE_HEADER));
-			memcpy(buffer + sizeof(MESSAGE_HEADER), &sendMsg, sizeof(MESSAGE_RES_DELETE_CHARACTER));
-			SendBroadCast(cur->GetSessionId(), buffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_DELETE_CHARACTER));
+			buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_DELETE_CHARACTER), static_cast<char>(MESSAGE_DEFINE::RES_DELETE_CHARACTER), sBuffer);
+			buildMsg_deleteCharacter(key, sBuffer);
+			SendBroadCast(cur->GetSessionId(), sBuffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_DELETE_CHARACTER));
 
 			_keys.erase(cur->GetSessionId());
 			pool.deAllocate(cur);
@@ -553,6 +561,7 @@ void GameServer::cleanUpPlayer()
 		}
 		++iter;
 	}
+	SbufferPool.deAllocate(sBuffer);
 }
 //프레임 로직 
 void GameServer::update()

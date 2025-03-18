@@ -105,8 +105,11 @@
     <ClInclude Include="ObjectPool.h">
       <Filter>Common\DataStructure</Filter>
     </ClInclude>
+    <ClInclude Include="NetDefine.h">
+      <Filter>NetLib</Filter>
+    </ClInclude>
     <ClInclude Include="SerializeBuffer.h">
-      <Filter>Common\DataStructure</Filter>
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

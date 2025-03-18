@@ -15,8 +15,6 @@ namespace NetLib
 	{
 	public:
 		void InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo, const int key);
-		void DestroySession();
-
 		inline SOCKET GetSocket() const
 		{
 			return _Socket;

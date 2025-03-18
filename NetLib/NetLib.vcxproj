@@ -150,6 +150,7 @@
     <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="MessageBuilder.h" />
     <ClInclude Include="MessageFormat.h" />
+    <ClInclude Include="NetDefine.h" />
     <ClInclude Include="NetLib.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="ObjectPool.h" />

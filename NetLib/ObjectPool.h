@@ -50,6 +50,7 @@ namespace Common
 			{
 				allocateBucket();
 			}
+
 			ret = reinterpret_cast<T*>(&_CurSlot->_Data);
 			_CurSlot++;
 			return ret;
@@ -84,12 +85,12 @@ namespace Common
 			{
 				allocateBucket();
 			}
+
 			element = reinterpret_cast<T*>(&_CurSlot->_Data);
 			new (static_cast<void*>(element)) T(std::forward<Args>(args)...);
 			_CurSlot++;
 			return element;
 		}
-
 
 		void deAllocate_destructor(T* pMemory)
 		{
@@ -108,12 +109,12 @@ namespace Common
 			}
 		}
 
-
 		static ObjectPool<T, BucketCount>& getInstance()
 		{
 			static ObjectPool<T, BucketCount> _singleton;
 			return _singleton;
 		}
+
 	private:
 		struct Slot
 		{

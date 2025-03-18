@@ -105,5 +105,8 @@
     <ClInclude Include="ObjectPool.h">
       <Filter>Common\DataStructure</Filter>
     </ClInclude>
+    <ClInclude Include="SerializeBuffer.h">
+      <Filter>Common\DataStructure</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

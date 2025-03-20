@@ -499,7 +499,6 @@ bool GameServer::CheckDirection(char direction)
 	return false;
 }
 
-
 void GameServer::OnDestroyProc(const SESSION_KEY key)
 {
 	const auto& iter = _keys.find(key);

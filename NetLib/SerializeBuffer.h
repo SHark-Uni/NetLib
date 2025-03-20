@@ -22,7 +22,6 @@ namespace Common
 		{
 			_pBuffer = new char[capcity + 1];
 		}
-
 		~SerializeBuffer()
 		{
 			delete[] _pBuffer;
@@ -41,7 +40,6 @@ namespace Common
 			_ReadPos += cpySize;
 			return cpySize;
 		}
-
 		inline int setData(char* src, size_t size)
 		{
 			int cpySize = size;
@@ -53,7 +51,6 @@ namespace Common
 			_WritePos += cpySize;
 			return cpySize;
 		}
-
 		inline int getCapacity() const
 		{
 			return _Capacity;
@@ -62,23 +59,19 @@ namespace Common
 		{
 			return (_WritePos - _ReadPos);
 		}
-
 		inline bool checkFailBit() const
 		{
 			return _Failbit;
 		}
-
 		inline void resetFailBit()
 		{
 			_Failbit = false;
 			return;
 		}
-
 		inline char* getBufferPtr()
 		{
 			return (_pBuffer + _ReadPos);
 		}
-
 		inline int moveWritePos(size_t size)
 		{
 			if (_Capacity < size + _WritePos)
@@ -88,7 +81,6 @@ namespace Common
 			_WritePos += size;
 			return size;
 		}
-
 		inline int moveReadPos(size_t size)
 		{
 			if (_Capacity < _ReadPos + size)
@@ -98,7 +90,6 @@ namespace Common
 			_ReadPos += size;
 			return size;
 		}
-
 		inline void clear()
 		{
 			_Failbit = false;
@@ -118,7 +109,6 @@ namespace Common
 			_ReadPos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (bool& value)
 		{
 			if (_ReadPos == _WritePos)
@@ -130,7 +120,6 @@ namespace Common
 			_ReadPos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (char& value)
 		{
 			if (_ReadPos == _WritePos)
@@ -142,7 +131,6 @@ namespace Common
 			_ReadPos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (short& value)
 		{
 			if (_WritePos - _ReadPos < sizeof(value))
@@ -155,7 +143,6 @@ namespace Common
 			_ReadPos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (unsigned short& value)
 		{
 			if (_WritePos - _ReadPos < sizeof(value))
@@ -168,7 +155,6 @@ namespace Common
 			_ReadPos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (int& value)
 		{
 			if (_WritePos - _ReadPos < sizeof(value))
@@ -181,7 +167,6 @@ namespace Common
 			_ReadPos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (unsigned int& value)
 		{
 			if (_WritePos - _ReadPos < sizeof(value))
@@ -194,7 +179,6 @@ namespace Common
 			_ReadPos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (long& value)
 		{
 			if (_WritePos - _ReadPos < sizeof(value))
@@ -207,7 +191,6 @@ namespace Common
 			_ReadPos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (unsigned long& value)
 		{
 			if (_WritePos - _ReadPos < sizeof(value))
@@ -219,7 +202,6 @@ namespace Common
 			_ReadPos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (float& fvalue)
 		{
 			if (_WritePos - _ReadPos < sizeof(fvalue))
@@ -243,7 +225,6 @@ namespace Common
 			_ReadPos += sizeof(dvalue);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator>> (long long& value)
 		{
 			if (_WritePos - _ReadPos < sizeof(value))
@@ -278,7 +259,6 @@ namespace Common
 			_WritePos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator<< (const char value)
 		{
 			if (_Capacity - _WritePos < sizeof(value))
@@ -290,7 +270,6 @@ namespace Common
 			_WritePos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator<< (const bool value)
 		{
 			if (_Capacity - _WritePos < sizeof(value))
@@ -304,7 +283,6 @@ namespace Common
 			return *this;
 
 		}
-
 		inline SerializeBuffer& operator<< (const short value)
 		{
 			if (_Capacity - _WritePos < sizeof(value))
@@ -317,7 +295,6 @@ namespace Common
 			_WritePos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator<< (const unsigned short value)
 		{
 			if (_Capacity - _WritePos < sizeof(value))
@@ -330,7 +307,6 @@ namespace Common
 			_WritePos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator<< (const int value)
 		{
 			if (_Capacity - _WritePos < sizeof(value))
@@ -343,7 +319,6 @@ namespace Common
 			_WritePos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator<< (const unsigned int value)
 		{
 			if (_Capacity - _WritePos < sizeof(value))
@@ -356,7 +331,6 @@ namespace Common
 			_WritePos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator<< (const long value)
 		{
 			if (_Capacity - _WritePos < sizeof(value))
@@ -369,7 +343,6 @@ namespace Common
 			_WritePos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator<< (const unsigned long value)
 		{
 			if (_Capacity - _WritePos < sizeof(value))
@@ -382,7 +355,6 @@ namespace Common
 			_WritePos += sizeof(value);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator<< (const float fvalue)
 		{
 			if (_Capacity - _WritePos < sizeof(fvalue))
@@ -407,7 +379,6 @@ namespace Common
 			_WritePos += sizeof(dvalue);
 			return *this;
 		}
-
 		inline SerializeBuffer& operator<< (const long long value)
 		{
 			if (_Capacity - _WritePos < sizeof(value))
@@ -432,8 +403,6 @@ namespace Common
 			_WritePos += sizeof(value);
 			return *this;
 		}
-
-
 	private:
 		bool _Failbit;
 		int _WritePos;

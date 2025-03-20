@@ -1,0 +1,71 @@
+@typedef long long LONG
+@typedef short MESSAGE_TYPE //기본은 shortl 
+
+[PROTOCOL]
+@RES
+@Uni
+CreateMyCharacter : 0
+{
+	int id,
+	char direction,
+	short x,
+	short y,
+	char hp,	 
+}
+
+@RES
+@BroadExceptMe
+CreateOtherCharacter : 1
+{
+	int id,
+	char direction,
+	short x,
+	short y,
+	char hp,	 
+}
+
+@RES
+@Broad
+DeleteCharacter: 2
+{
+	int id,
+}
+
+
+@REQ
+MoveStart : 10
+{
+	char dir,
+	short x,
+	short y,
+}
+
+@RES
+@BroadExceptMe
+MoveStart : 11
+{
+	int id,
+	char dir,
+	short x,
+	short y,
+}
+
+@REQ
+MoveStop : 12
+{
+	char dir,
+	short x,
+	short y,
+}
+
+@RES
+@Broad
+MoveStop : 13
+{
+	int id,
+	char dir,
+	short x,
+	short y,
+}
+
+[PROTOCOL_END]

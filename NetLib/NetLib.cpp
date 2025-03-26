@@ -44,7 +44,6 @@ eERROR_MESSAGE NetWorkLib::Init()
 		return eERROR_MESSAGE::MAKE_SOCKET_FAIL;
 	}
 
-	//비동기
 	ULONG on = 1;
 	Flag = ::ioctlsocket(_ListenSocket, FIONBIO, &on);
 	if (Flag != 0)
@@ -54,7 +53,6 @@ eERROR_MESSAGE NetWorkLib::Init()
 		return eERROR_MESSAGE::SET_SOCKET_NONBLOCKING_FAIL;
 	}
 
-	//링거
 	LINGER option;
 	option.l_onoff = 1;
 	option.l_linger = 0;
@@ -65,7 +63,7 @@ eERROR_MESSAGE NetWorkLib::Init()
 		Logger::Logging(errorCode, __LINE__, L"SET LINGER ERROR");
 		return eERROR_MESSAGE::SET_LINGER_FAIL;
 	}
-	//서버정보 읽어오기
+
 	if (!ReadConfig())
 	{
 		Logger::Logging(-1, __LINE__, L"READ SERVER_CONFIG_ERROR");
@@ -77,7 +75,7 @@ eERROR_MESSAGE NetWorkLib::Init()
 	addrInfo.sin_family = AF_INET;
 	addrInfo.sin_port = htons(_ServerConfig._Port);
 	::InetPton(AF_INET, L"0.0.0.0", &addrInfo.sin_addr);
-	//바인딩
+	
 	Flag = ::bind(_ListenSocket, reinterpret_cast<SOCKADDR*>(&addrInfo), sizeof(addrInfo));
 	if (Flag == SOCKET_ERROR)
 	{
@@ -85,7 +83,7 @@ eERROR_MESSAGE NetWorkLib::Init()
 		Logger::Logging(errorCode, __LINE__, L"BIND_SERVER_FAIL");
 		return eERROR_MESSAGE::BIND_SERVER_FAIL;
 	}
-	//리슨
+
 	Flag = ::listen(_ListenSocket, SOMAXCONN_HINT(65535));
 	if (Flag == SOCKET_ERROR)
 	{
@@ -215,24 +213,23 @@ void NetWorkLib::_RecvProc(Session* session)
 
 		if (header._Code != SIGNITURE)
 		{
+			OnDestroyProc(session->GetSessionKey());
+			break;
+		}
+
+		payLoadLen = header._PayloadLen;
+		if (pRecvQ->GetCurrentSize() < payLoadLen + sizeof(header_t))
+		{
 			break;
 		}
 
 		SerializeBuffer* sbuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
 		sbuffer->clear();
-
-		payLoadLen = header._PayloadLen;
-		if (pRecvQ->GetCurrentSize() < payLoadLen + sizeof(header_t))
-		{
-			SbufferPool.deAllocate(sbuffer);
-			break;
-		}
-
 		dequeueLen = pRecvQ->Dequeue(sbuffer->getBufferPtr(), payLoadLen + sizeof(header_t));
 		//여기서 dequeueLen이 요청한 크기보다 작은건 내가 잘못만든거임. 
 		if (dequeueLen != payLoadLen + sizeof(header_t))
 		{
-			Logger::Logging(static_cast<int>(eERROR_MESSAGE::SELECT_FAIL), __LINE__, L"SELECT ERROR");
+			Logger::Logging(static_cast<int>(eERROR_MESSAGE::RECV_DEQUEUE_ERROR), __LINE__, L"RECV DEQUEUE ERROR");
 			SbufferPool.deAllocate(sbuffer);
 			DebugBreak();
 			break;
@@ -305,7 +302,7 @@ void NetWorkLib::_SendProc(Session* session)
 	if (sendLen < sendQLen)
 	{
 #ifdef GAME_DEBUG
-		printf("L7 BUFFER IS FULL DISCONNECT!\n");
+		printf("L4 BUFFER IS FULL DISCONNECT!\n");
 #endif
 		OnDestroyProc(session->GetSessionKey());
 		return;

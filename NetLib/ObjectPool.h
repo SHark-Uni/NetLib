@@ -18,7 +18,6 @@ namespace Common
 		{
 
 		}
-
 		~ObjectPool()
 		{
 			Slot* cur = _CurBucket;

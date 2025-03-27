@@ -15,7 +15,7 @@ NetWorkLib::~NetWorkLib()
 	for (auto& session : _Sessions)
 	{
 		Session* cur = session.second;
-		MemoryPool<Session, static_cast<size_t>(NETLIB_POOL_SIZE::SESSION_POOL_SIZE)>::getInstance().deAllocate(cur);
+		_SessionPool->deAllocate(cur);
 	}
 
 	closesocket(_ListenSocket);
@@ -92,7 +92,7 @@ eERROR_MESSAGE NetWorkLib::Init()
 		return eERROR_MESSAGE::SET_LISTEN_FAIL;
 	}
 
-	_Sessions.reserve(4096);
+	_Sessions.reserve(6000);
 	return eERROR_MESSAGE::SUCCESS;
 }
 
@@ -200,7 +200,9 @@ void NetWorkLib::_RecvProc(Session* session)
 	int peekMessageLen;
 	int payLoadLen;
 	int dequeueLen;
-	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
+
+	//auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
+
 	// 한번 받은 메시지는 모두 처리한다.
 	while (true)
 	{	
@@ -223,14 +225,14 @@ void NetWorkLib::_RecvProc(Session* session)
 			break;
 		}
 
-		SerializeBuffer* sbuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+		SerializeBuffer* sbuffer = _SbufferPool->allocate();
 		sbuffer->clear();
 		dequeueLen = pRecvQ->Dequeue(sbuffer->getBufferPtr(), payLoadLen + sizeof(header_t));
 		//여기서 dequeueLen이 요청한 크기보다 작은건 내가 잘못만든거임. 
 		if (dequeueLen != payLoadLen + sizeof(header_t))
 		{
 			Logger::Logging(static_cast<int>(eERROR_MESSAGE::RECV_DEQUEUE_ERROR), __LINE__, L"RECV DEQUEUE ERROR");
-			SbufferPool.deAllocate(sbuffer);
+			_SbufferPool->deAllocate(sbuffer);
 			DebugBreak();
 			break;
 		}
@@ -245,7 +247,7 @@ void NetWorkLib::_RecvProc(Session* session)
 #endif
 		//payload만 넘기기
 		OnRecvProc(sbuffer, header._MessageType, session->GetSessionKey());
-		SbufferPool.deAllocate(sbuffer);
+		_SbufferPool->deAllocate(sbuffer);
 	}
 	return;
 }
@@ -272,7 +274,7 @@ void NetWorkLib::_AcceptProc()
 
 	//성공적으로 Accpet
 	//세션 생성
-	Session* newSession = MemoryPool<Session, static_cast<size_t>(NETLIB_POOL_SIZE::SESSION_POOL_SIZE)>::getInstance().allocate();
+	Session* newSession = _SessionPool->allocate();
 	int key = newSession->GenerateSessionKey();
 	newSession->InitSession(connectSocket, connectInfo, key);
 	_Sessions.insert({ key, newSession });
@@ -397,7 +399,6 @@ void NetWorkLib::SendBroadCast(SESSION_KEY exceptSession, SerializeBuffer* messa
 
 void NetWorkLib::Disconnect(SESSION_KEY sessionKey)
 {
-	//서버로 부터 이상한 세션키가 온다면? 세션 키도 관리대상인가?
 	const auto& iter = _Sessions.find(sessionKey);
 	Session* cur = iter->second;
 	if (iter != _Sessions.end())
@@ -410,9 +411,6 @@ void NetWorkLib::Disconnect(SESSION_KEY sessionKey)
 
 void NetWorkLib::CleanupSession()
 {
-	auto& pool = MemoryPool<Session, static_cast<size_t>(NETLIB_POOL_SIZE::SESSION_POOL_SIZE)>::getInstance();
-	auto& ringbufferPool = ObjectPool<CircularQueue, Session::POOL_SIZE>::getInstance();
-
 	auto iter = _Sessions.begin();
 	auto iter_e = _Sessions.end();
 
@@ -423,14 +421,22 @@ void NetWorkLib::CleanupSession()
 		if (cur->GetConnection() == false)
 		{
 			closesocket(cur->GetSocket());
-			ringbufferPool.deAllocate(cur->_pRecvQueue);
-			ringbufferPool.deAllocate(cur->_pSendQueue);
-			pool.deAllocate(cur);
+			_SessionPool->deAllocate(cur);
 			iter = _Sessions.erase(iter);
 			continue;
 		}
 		++iter;
 	}
+}
+
+void NetLib::NetWorkLib::registSessionPool(ObjectPool<Session, SESSION_POOL_SIZE, false>* sessionpool)
+{
+	_SessionPool = sessionpool;
+}
+
+void NetLib::NetWorkLib::registSBufferPool(ObjectPool<SerializeBuffer, SBUFFER_POOL_SIZE, false>* sbufferpool)
+{
+	_SbufferPool = sbufferpool;
 }
 
 bool NetWorkLib::ReadConfig()

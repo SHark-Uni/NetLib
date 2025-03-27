@@ -10,6 +10,8 @@
 #include "ErrorMessage.h"
 #include "Config.h"
 #include "SerializeBuffer.h"
+#include "ObjectPool.h"
+#include "NetDefine.h"
 
 namespace NetLib
 {
@@ -23,6 +25,10 @@ namespace NetLib
 		Common::eERROR_MESSAGE Init();
 		void Process();
 		void CleanupSession();
+
+		void registSessionPool(ObjectPool<Session, SESSION_POOL_SIZE, false>* sessionpool);
+		void registSBufferPool(ObjectPool<SerializeBuffer, SBUFFER_POOL_SIZE, false>* sbufferpool);
+
 	protected:
 		typedef int SESSION_KEY;
 		/*=======
@@ -39,9 +45,13 @@ namespace NetLib
 		/* 技记 昏力夸没. */
 		void Disconnect(SESSION_KEY sessionKey);
 
+	protected:
+		ObjectPool<SerializeBuffer, SBUFFER_POOL_SIZE, false>* _SbufferPool;
 	private:
 		std::unordered_map<SESSION_KEY, Session*> _Sessions;
 		SOCKET _ListenSocket;
+
+		ObjectPool<Session, SESSION_POOL_SIZE, false>* _SessionPool;
 
 		void _AcceptProc();
 		void _RecvProc(Session* session);

@@ -3,18 +3,19 @@
 
 using namespace NetLib;
 
+Session::Session()
+{
+	_pRecvQueue = new CircularQueue(1024);
+	_pSendQueue = new CircularQueue(8192);
+}
+
 void Session::InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo, const int key)
 {
-	auto& pool = ObjectPool<CircularQueue, POOL_SIZE>::getInstance();
-
 	_Socket = connectSocket;
 	_AddrInfo = connectInfo;
 	_Alive = true;
 	_Key = key;
 	
-	_pRecvQueue = pool.allocate_reuse(QUEUE_SIZE);
-	_pSendQueue = pool.allocate_reuse(QUEUE_SIZE);
-
 	_pRecvQueue->clear();
 	_pSendQueue->clear();
 }

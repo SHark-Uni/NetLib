@@ -1,9 +1,10 @@
 #pragma once
 
 #include "NetLib.h"
-
+#include "Player.h"
 namespace Core
 {
+	constexpr int PLAYER_POOL_SIZE = 4096;
 	class Player;
 	class GameServer : public NetLib::NetWorkLib
 	{
@@ -11,6 +12,8 @@ namespace Core
 		typedef int PLAYER_KEY;
 		GameServer();
 		virtual ~GameServer();
+
+		void registPlayerPool(Common::ObjectPool<Player, PLAYER_POOL_SIZE, false>* pool);
 
 		void OnAcceptProc(const SESSION_KEY key) override;
 		void OnRecvProc(Common::SerializeBuffer* message, const char msgType, SESSION_KEY key) override;
@@ -29,12 +32,9 @@ namespace Core
 		void cleanUpPlayer();
 		void update();
 	private:
-		enum
-		{
-			PLAYER_POOL_SIZE = 4096,
-		};
 		std::unordered_map<SESSION_KEY, PLAYER_KEY> _keys;
 		std::unordered_map<PLAYER_KEY, Player*> _Players;
 
+		Common::ObjectPool<Player, PLAYER_POOL_SIZE, false>* _PlayerPool;
 	};
 }

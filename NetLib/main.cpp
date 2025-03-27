@@ -17,7 +17,15 @@ int main()
 	DWORD nextTick;
 	int sleepTime;
 
+	ObjectPool<Player, PLAYER_POOL_SIZE, false> playerPool;
+	ObjectPool<Session, SESSION_POOL_SIZE, false> sessionPool;
+	ObjectPool<SerializeBuffer, SBUFFER_POOL_SIZE, false> sBufferPool;
+
 	GameServer* gameServer = new GameServer();
+	gameServer->registSessionPool(&sessionPool);
+	gameServer->registPlayerPool(&playerPool);
+	gameServer->registSBufferPool(&sBufferPool);
+
 	if (gameServer->Init() != eERROR_MESSAGE::SUCCESS)
 	{
 		return 0;

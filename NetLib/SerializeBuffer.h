@@ -411,7 +411,7 @@ namespace Common
 
 		enum
 		{
-			DEFAULT_CAPACITY = 1024,
+			DEFAULT_CAPACITY = 1400,
 		};
 
 		char* _pBuffer;

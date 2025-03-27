@@ -14,6 +14,7 @@ namespace NetLib
 	class Session
 	{
 	public:
+		Session();
 		void InitSession(const SOCKET connectSocket, const SOCKADDR_IN& connectInfo, const int key);
 		inline SOCKET GetSocket() const
 		{
@@ -46,11 +47,6 @@ namespace NetLib
 	private:
 		friend class NetWorkLib;
 		SOCKET _Socket;
-		enum
-		{
-			POOL_SIZE = 2048,
-			QUEUE_SIZE = 4096,
-		};
 
 		CircularQueue* _pSendQueue;
 		CircularQueue* _pRecvQueue;

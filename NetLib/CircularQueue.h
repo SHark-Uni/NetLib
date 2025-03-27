@@ -105,7 +105,7 @@ namespace Common
 		int _Rear;
 		int _Capacity;
 		enum {
-			DEFAULT_SIZE = 64,
+			DEFAULT_SIZE = 1024,
 		};
 		char* _pBuffer;
 	};

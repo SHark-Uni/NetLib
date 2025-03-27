@@ -1,8 +1,7 @@
 #include "GameServer.h"
 #include "MessageFormat.h"
 #include "MessageBuilder.h"
-#include "MemoryPool.h"
-#include "Player.h"
+
 #include "PlayerDefine.h"
 #include "Logger.h"
 #include "NetDefine.h"
@@ -16,13 +15,17 @@ using namespace Common;
 
 GameServer::GameServer()
 {
-	_Players.reserve(1024);
-	_keys.reserve(1024);
+	_Players.reserve(4000);
+	_keys.reserve(4000);
 }
 
 GameServer::~GameServer()
 {
 
+}
+void Core::GameServer::registPlayerPool(ObjectPool<Player, PLAYER_POOL_SIZE, false>* pool)
+{
+	_PlayerPool = pool;
 }
 /*==================================
 onAcceptProc에서 할일
@@ -34,16 +37,15 @@ void GameServer::OnAcceptProc(const SESSION_KEY key)
 {
 	//1. 플레이어 생성
 	int playerKey;
-	MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
-	Player* newPlayer = pool.allocate();
+	
+	Player* newPlayer = _PlayerPool->allocate();
 	playerKey = newPlayer->generatePlayerId();
 
 	newPlayer->Init(playerKey, key);
 	_keys.insert({ key, playerKey });
 	_Players.insert({ playerKey, newPlayer });
 
-	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
-	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	SerializeBuffer* sBuffer = _SbufferPool->allocate();
 	sBuffer->clear();
 	//1. 내 캐릭터 생성 메시지 전송
 	buildMsg_Header(
@@ -121,7 +123,7 @@ void GameServer::OnAcceptProc(const SESSION_KEY key)
 			SendUniCast(key, sBuffer, sizeof(header_t) + sizeof(MESSAGE_RES_MOVE_START));
 		}
 	}
-	SbufferPool.deAllocate(sBuffer);
+	_SbufferPool->deAllocate(sBuffer);
 }
 
 void GameServer::OnRecvProc(SerializeBuffer* message, const char msgType, SESSION_KEY key)
@@ -202,8 +204,7 @@ void GameServer::ReqMoveStartProc(SerializeBuffer* message, const SESSION_KEY ke
 		break;
 	}
 
-	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
-	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	SerializeBuffer* sBuffer = _SbufferPool->allocate();
 	sBuffer->clear();
 	//나 빼고 다 보내기
 
@@ -217,7 +218,7 @@ void GameServer::ReqMoveStartProc(SerializeBuffer* message, const SESSION_KEY ke
 	printf("============================================================\n");
 #endif
 	SendBroadCast(key, sBuffer, sizeof(MESSAGE_RES_MOVE_START) + sizeof(MESSAGE_HEADER));
-	SbufferPool.deAllocate(sBuffer);
+	_SbufferPool->deAllocate(sBuffer);
 }
 
 void GameServer::ReqMoveStopProc(SerializeBuffer* message, const SESSION_KEY key)
@@ -273,8 +274,7 @@ void GameServer::ReqMoveStopProc(SerializeBuffer* message, const SESSION_KEY key
 	printf("MOVE STOP MESSAGE\n");
 	printf("PLAYER ID : %d | SESSION ID : %d | PARAM KEY : %d |CUR_X : %hd  | CUR_Y : %hd |\n", player->GetPlayerId(), player->GetSessionId(), key, player->GetX(), player->GetY());
 #endif
-	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
-	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	SerializeBuffer* sBuffer = _SbufferPool->allocate();
 	sBuffer->clear();
 
 	//무브스탑 메시지 생성 후 보내기
@@ -282,7 +282,7 @@ void GameServer::ReqMoveStopProc(SerializeBuffer* message, const SESSION_KEY key
 	buildMsg_move_stop(playerKey, direction, player->GetX(), player->GetY(), sBuffer);
 	SendBroadCast(key, sBuffer, sizeof(MESSAGE_RES_MOVE_STOP) + sizeof(MESSAGE_HEADER));
 
-	SbufferPool.deAllocate(sBuffer);
+	_SbufferPool->deAllocate(sBuffer);
 	return;
 }
 
@@ -309,11 +309,10 @@ void GameServer::ReqAttackLeftHandProc(SerializeBuffer* message, const SESSION_K
 	short myX = attacker->GetX();
 	short myY = attacker->GetY();
 
-	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
-	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
-	
-	//어택 Message Send
+	SerializeBuffer* sBuffer = _SbufferPool->allocate();
 	sBuffer->clear();
+	//어택 Message Send
+	
 	buildMsg_Header(SIGNITURE, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND), static_cast<char>(MESSAGE_DEFINE::RES_ATTACK_LEFT_HAND), sBuffer);
 	buildMsg_attack_lefthand(playerKey, attackDir, myX, myY, sBuffer);
 	SendBroadCast(key, sBuffer, sizeof(MESSAGE_RES_ATTACK_LEFT_HAND) + sizeof(MESSAGE_HEADER));
@@ -343,7 +342,7 @@ void GameServer::ReqAttackLeftHandProc(SerializeBuffer* message, const SESSION_K
 			SendBroadCast(sBuffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
 		}
 	}
-	SbufferPool.deAllocate(sBuffer);
+	_SbufferPool->deAllocate(sBuffer);
 }
 
 void GameServer::ReqAttackRightHandProc(SerializeBuffer* message, const SESSION_KEY key)
@@ -370,8 +369,8 @@ void GameServer::ReqAttackRightHandProc(SerializeBuffer* message, const SESSION_
 	short myX = attacker->GetX();
 	short myY = attacker->GetY();
 
-	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
-	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	
+	SerializeBuffer* sBuffer = _SbufferPool->allocate();
 	sBuffer->clear();
 
 	//어택 Message Send
@@ -406,7 +405,7 @@ void GameServer::ReqAttackRightHandProc(SerializeBuffer* message, const SESSION_
 			SendBroadCast(sBuffer, sizeof(MESSAGE_RES_DAMAGE) + sizeof(MESSAGE_HEADER));
 		}
 	}
-	SbufferPool.deAllocate(sBuffer);
+	_SbufferPool->deAllocate(sBuffer);
 }
 
 void GameServer::ReqAttackKickProc(SerializeBuffer* message, const SESSION_KEY key)
@@ -431,8 +430,7 @@ void GameServer::ReqAttackKickProc(SerializeBuffer* message, const SESSION_KEY k
 	int playerKey = _keys.find(key)->second;
 	Player* attacker = _Players.find(playerKey)->second;
 
-	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
-	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	SerializeBuffer* sBuffer = _SbufferPool->allocate();
 	sBuffer->clear();
 
 	//어택 Message Send
@@ -466,7 +464,7 @@ void GameServer::ReqAttackKickProc(SerializeBuffer* message, const SESSION_KEY k
 
 		}
 	}
-	SbufferPool.deAllocate(sBuffer);
+	_SbufferPool->deAllocate(sBuffer);
 }
 
 bool GameServer::CheckAttackInRange(const short attackerX, const short attackerY, const int AttackRangeX, const int AttackRangeY, const short targetX, const short targetY, const char direction)
@@ -535,10 +533,8 @@ void GameServer::cleanUpPlayer()
 	//진짜 지우는 경우
 	auto iter = _Players.begin();
 	auto iter_e = _Players.end();
-	MemoryPool<Player, PLAYER_POOL_SIZE>& pool = MemoryPool<Player, PLAYER_POOL_SIZE>::getInstance();
-
-	auto& SbufferPool = ObjectPool<SerializeBuffer, static_cast<size_t>(NETLIB_POOL_SIZE::SBUFFER_POOL_SIZE)>::getInstance();
-	SerializeBuffer* sBuffer = SbufferPool.allocate_reuse(static_cast<int>(NETLIB_POOL_SIZE::SBUFFER_DEFAULT_SIZE));
+	
+	SerializeBuffer* sBuffer = _SbufferPool->allocate();
 	
 	for (; iter != iter_e; )
 	{
@@ -554,13 +550,13 @@ void GameServer::cleanUpPlayer()
 			SendBroadCast(cur->GetSessionId(), sBuffer, sizeof(MESSAGE_HEADER) + sizeof(MESSAGE_RES_DELETE_CHARACTER));
 
 			_keys.erase(cur->GetSessionId());
-			pool.deAllocate(cur);
+			_PlayerPool->deAllocate(cur);
 			iter = _Players.erase(iter);
 			continue;
 		}
 		++iter;
 	}
-	SbufferPool.deAllocate(sBuffer);
+	_SbufferPool->deAllocate(sBuffer);
 }
 //프레임 로직 
 void GameServer::update()
